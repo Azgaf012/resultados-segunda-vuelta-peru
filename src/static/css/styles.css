@@ -70,6 +70,24 @@ body {
   color: var(--text-dim);
 }
 
+.btn-info {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-info:hover {
+  background: var(--accent);
+  color: #06283d;
+}
+
 /* Layout */
 .container {
   flex: 1;
@@ -678,6 +696,123 @@ body {
   border-top: 1px solid var(--bg-soft);
 }
 
+.enlace-info {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* Modal de detalle / información */
+.modal[hidden] {
+  display: none;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(3px);
+}
+
+.modal__caja {
+  position: relative;
+  z-index: 1;
+  width: 380px;
+  max-width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid var(--bg-soft);
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  padding: 20px 20px 18px;
+  animation: modal-aparece 0.18s ease-out;
+}
+
+@keyframes modal-aparece {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.modal__cerrar {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal__cerrar:hover {
+  background: #475569;
+}
+
+.modal__contenido .tt-titulo {
+  font-size: 1.15rem;
+  padding-right: 32px;
+}
+
+/* Contenido informativo del modal "Acerca de" */
+.info-bloque h4 {
+  margin: 14px 0 4px;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.info-bloque p,
+.info-bloque ul {
+  margin: 6px 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.info-bloque ul {
+  padding-left: 18px;
+}
+
+.info-bloque li {
+  margin: 3px 0;
+}
+
+.info-aviso {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bg-soft);
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+body.modal-abierto {
+  overflow: hidden;
+}
+
 .footer p {
   margin: 0;
 }
@@ -739,6 +874,33 @@ body {
   }
   .candidatos--general .candidato {
     grid-template-columns: 48px 1fr;
+  }
+  .modal {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal__caja {
+    width: 100%;
+    max-width: 100%;
+    max-height: 88vh;
+    border-radius: 18px 18px 0 0;
+    padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+    animation: modal-sube 0.22s ease-out;
+  }
+  .modal__cerrar {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@keyframes modal-sube {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

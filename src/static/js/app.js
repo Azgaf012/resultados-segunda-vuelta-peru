@@ -352,6 +352,95 @@ function conectarTooltips(grid) {
   });
 }
 
+// --- Modal de detalle por región (clic/tap en una tarjeta) ---
+const modalEl = (() => {
+  const el = document.createElement("div");
+  el.id = "region-modal";
+  el.className = "modal";
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-modal", "true");
+  el.hidden = true;
+  el.innerHTML = `
+    <div class="modal__overlay" data-cerrar></div>
+    <div class="modal__caja" role="document">
+      <button class="modal__cerrar" type="button" aria-label="Cerrar" data-cerrar>×</button>
+      <div class="modal__contenido"></div>
+    </div>`;
+  document.body.appendChild(el);
+  return el;
+})();
+
+function abrirModalRegion(region) {
+  modalEl.querySelector(".modal__contenido").innerHTML = tooltipRegion(region);
+  modalEl.hidden = false;
+  document.body.classList.add("modal-abierto");
+}
+
+function abrirModalInfo() {
+  modalEl.querySelector(".modal__contenido").innerHTML = `
+    <div class="tt-titulo">Acerca de esta página</div>
+    <div class="info-bloque">
+      <p>
+        Visualización <strong>no oficial</strong> de los resultados de la segunda
+        vuelta presidencial del Perú.
+      </p>
+      <h4>¿De dónde salen los datos?</h4>
+      <p>
+        Se obtienen automáticamente de la <strong>API pública de la ONPE</strong>
+        (Oficina Nacional de Procesos Electorales), la misma fuente que alimenta
+        su portal oficial de resultados.
+      </p>
+      <h4>¿Cada cuánto se actualizan?</h4>
+      <p>
+        La página consulta a la ONPE de forma periódica y se refresca sola cada
+        minuto. La hora de la última actualización se muestra en la parte superior.
+      </p>
+      <h4>¿Qué significan los porcentajes?</h4>
+      <ul>
+        <li>
+          El <strong>porcentaje junto al nombre de la región</strong> es el avance
+          de actas contabilizadas en ese ámbito.
+        </li>
+        <li>
+          Los porcentajes de cada agrupación son sobre <strong>votos válidos</strong>.
+        </li>
+        <li>
+          Toca o pasa el cursor por una región para ver su detalle (votos,
+          participación y actas).
+        </li>
+      </ul>
+      <p class="info-aviso">
+        Los resultados son preliminares y pueden variar. Para información oficial
+        visita el portal de la ONPE.
+      </p>
+    </div>`;
+  modalEl.hidden = false;
+  document.body.classList.add("modal-abierto");
+}
+
+function cerrarModal() {
+  modalEl.hidden = true;
+  document.body.classList.remove("modal-abierto");
+}
+
+function conectarModalRegiones(grid) {
+  grid.addEventListener("click", (ev) => {
+    const tarjeta = ev.target.closest(".region");
+    if (!tarjeta || !grid.contains(tarjeta)) return;
+    const region = cacheRegiones.find((r) => r.ubigeo === tarjeta.dataset.ubigeo);
+    if (!region) return;
+    // En móvil no hay hover: ocultamos cualquier tooltip residual.
+    tooltipEl.style.display = "none";
+    abrirModalRegion(region);
+  });
+  modalEl.addEventListener("click", (ev) => {
+    if (ev.target.hasAttribute("data-cerrar")) cerrarModal();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && !modalEl.hidden) cerrarModal();
+  });
+}
+
 function renderGridRegiones(regiones, filtro = "") {
   const grid = document.getElementById("grid-regiones");
   const texto = filtro.trim().toLowerCase();
@@ -408,6 +497,12 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
   conectarTooltips(document.getElementById("grid-regiones"));
+  conectarModalRegiones(document.getElementById("grid-regiones"));
+
+  const btnInfo = document.getElementById("btn-info");
+  if (btnInfo) btnInfo.addEventListener("click", abrirModalInfo);
+  const btnInfoFooter = document.getElementById("btn-info-footer");
+  if (btnInfoFooter) btnInfoFooter.addEventListener("click", abrirModalInfo);
 
   refrescarTodo();
   // Auto-refresco cada 60 s.

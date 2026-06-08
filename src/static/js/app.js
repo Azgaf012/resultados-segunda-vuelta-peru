@@ -468,6 +468,81 @@ async function cargarGeneral() {
     "Actualizado: " + fmtFecha(fecha);
 
   actualizarAvisoActas(data.totales);
+  renderTendencia(data.tendencia);
+}
+
+function fmtHora(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Evolución de la diferencia entre los dos primeros en las últimas actualizaciones.
+function renderTendencia(tendencia) {
+  const cont = document.getElementById("tendencia-general");
+  if (!cont) return;
+  if (!tendencia || tendencia.length === 0) {
+    cont.innerHTML = "";
+    return;
+  }
+
+  const ultimo = tendencia[tendencia.length - 1];
+  const colorLider = colorPartido(ultimo.lider_codigo).color;
+
+  // Filas de cada snapshot (de más antiguo a más reciente).
+  const filas = tendencia
+    .map((p) => {
+      let variacion = "";
+      if (p.variacion !== null && p.variacion !== undefined) {
+        const v = p.variacion;
+        const signo = v > 0 ? "▲" : v < 0 ? "▼" : "▬";
+        const clase = v > 0 ? "tend-sube" : v < 0 ? "tend-baja" : "tend-igual";
+        const valor = `${v > 0 ? "+" : ""}${v.toFixed(3)}`;
+        variacion = `<span class="tend__var ${clase}">${signo} ${valor}</span>`;
+      } else {
+        variacion = `<span class="tend__var tend-igual">—</span>`;
+      }
+      const cLider = colorPartido(p.lider_codigo).color;
+      return `
+      <div class="tend__fila">
+        <span class="tend__hora">${fmtHora(p.fecha_actualizacion)}</span>
+        <span class="tend__actas">${fmtPct1(p.actas_contabilizadas)} actas</span>
+        <span class="tend__dif" style="color:${cLider}">
+          ${fmtPct1(p.diferencia)}
+        </span>
+        ${variacion}
+      </div>`;
+    })
+    .join("");
+
+  const subiendo = ultimo.variacion;
+  let resumenVar = "";
+  if (subiendo !== null && subiendo !== undefined) {
+    if (subiendo > 0)
+      resumenVar = `<span class="tend-sube">la ventaja se amplía</span>`;
+    else if (subiendo < 0)
+      resumenVar = `<span class="tend-baja">la ventaja se reduce</span>`;
+    else resumenVar = `<span class="tend-igual">sin cambios</span>`;
+  }
+
+  cont.innerHTML = `
+    <div class="tend__titulo">Diferencia · últimas 3 actualizaciones</div>
+    <div class="tend__actual">
+      <span class="tend__actual-pct" style="color:${colorLider}">
+        ${fmtPct(ultimo.diferencia)}
+      </span>
+      <span class="tend__actual-txt">
+        de ventaja para <strong style="color:${colorLider}">${ultimo.lider_agrupacion}</strong>
+        ${resumenVar ? "· " + resumenVar : ""}
+      </span>
+    </div>
+    <div class="tend__lista">
+      <div class="tend__cab">
+        <span>Hora</span><span>Avance</span><span>Diferencia</span><span>Cambio</span>
+      </div>
+      ${filas}
+    </div>`;
 }
 
 // Aviso prominente: deja claro que son resultados preliminares y cuántas actas

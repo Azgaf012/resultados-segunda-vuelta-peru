@@ -130,6 +130,53 @@ def leer_ultimos_totales(
     return max(filas, key=lambda f: f["fecha_actualizacion"])
 
 
+def leer_historico_participantes(
+    directorio: str | Path,
+    nivel: str = "nacional",
+    ubigeo: str = "",
+    n: int = 3,
+) -> list[tuple[str, list[dict]]]:
+    """Devuelve los últimos `n` snapshots de participantes de un ámbito.
+
+    Returns:
+        Lista de tuplas `(fecha_actualizacion, filas)` ordenadas de la más
+        antigua a la más reciente (máximo `n` elementos).
+    """
+    ruta = Path(directorio) / ARCHIVO_PARTICIPANTES
+    filas = [
+        f
+        for f in _leer_filas(ruta)
+        if f["nivel"] == nivel and f["ubigeo"] == ubigeo
+    ]
+    if not filas:
+        return []
+    por_fecha: dict[str, list[dict]] = {}
+    for f in filas:
+        por_fecha.setdefault(f["fecha_actualizacion"], []).append(f)
+    fechas = sorted(por_fecha.keys())[-n:]
+    return [(fecha, por_fecha[fecha]) for fecha in fechas]
+
+
+def leer_historico_totales(
+    directorio: str | Path,
+    nivel: str = "nacional",
+    ubigeo: str = "",
+    n: int = 3,
+) -> dict[str, dict]:
+    """Devuelve los totales de los últimos `n` snapshots, indexados por fecha."""
+    ruta = Path(directorio) / ARCHIVO_TOTALES
+    filas = [
+        f
+        for f in _leer_filas(ruta)
+        if f["nivel"] == nivel and f["ubigeo"] == ubigeo
+    ]
+    if not filas:
+        return {}
+    por_fecha = {f["fecha_actualizacion"]: f for f in filas}
+    fechas = sorted(por_fecha.keys())[-n:]
+    return {fecha: por_fecha[fecha] for fecha in fechas}
+
+
 def listar_ambitos(
     directorio: str | Path, nivel: str = "departamento"
 ) -> list[dict]:

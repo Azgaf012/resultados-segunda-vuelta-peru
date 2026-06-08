@@ -23,6 +23,8 @@ from .imagenes import ruta_candidato, ruta_partido
 from .onpe_client import OnpeClient
 from .scraper import Scraper
 from .storage import (
+    leer_historico_participantes,
+    leer_historico_totales,
     leer_ultimos_participantes,
     leer_ultimos_totales,
     listar_ambitos,
@@ -234,6 +236,63 @@ def _resultado(nivel: str, ubigeo: str, nombre_defecto: str) -> dict:
     }
 
 
+def _tendencia(nivel: str, ubigeo: str, n: int = 3) -> list[dict]:
+    """Calcula cómo evoluciona la diferencia entre los dos primeros candidatos.
+
+    Devuelve hasta `n` snapshots (de más antiguo a más reciente), cada uno con la
+    fecha, el avance de actas, el líder y la diferencia en puntos porcentuales.
+    También incluye la variación de la diferencia respecto al snapshot anterior.
+    """
+    historico = leer_historico_participantes(DIRECTORIO_DATOS, nivel, ubigeo, n)
+    totales_por_fecha = leer_historico_totales(DIRECTORIO_DATOS, nivel, ubigeo, n)
+
+    puntos: list[dict] = []
+    for fecha, filas in historico:
+        participantes = sorted(
+            (
+                {
+                    "candidato": f["candidato"],
+                    "agrupacion": f["agrupacion"],
+                    "codigo": int(_num(f["codigo_agrupacion"])),
+                    "votos": int(_num(f["votos_validos"])),
+                    "pct_validos": _num(f["pct_validos"]),
+                }
+                for f in filas
+            ),
+            key=lambda p: p["votos"],
+            reverse=True,
+        )
+        if len(participantes) < 2:
+            continue
+        lider, segundo = participantes[0], participantes[1]
+        diferencia = round(lider["pct_validos"] - segundo["pct_validos"], 3)
+        tot = totales_por_fecha.get(fecha)
+        puntos.append(
+            {
+                "fecha_actualizacion": fecha,
+                "actas_contabilizadas": _num(tot["actas_contabilizadas"]) if tot else 0,
+                "lider_candidato": lider["candidato"],
+                "lider_agrupacion": lider["agrupacion"],
+                "lider_codigo": lider["codigo"],
+                "lider_pct": lider["pct_validos"],
+                "segundo_pct": segundo["pct_validos"],
+                "diferencia": diferencia,
+                "votos_lider": lider["votos"],
+                "votos_segundo": segundo["votos"],
+            }
+        )
+
+    # Variación de la diferencia respecto al punto anterior.
+    for i, punto in enumerate(puntos):
+        if i == 0:
+            punto["variacion"] = None
+        else:
+            punto["variacion"] = round(
+                punto["diferencia"] - puntos[i - 1]["diferencia"], 3
+            )
+    return puntos
+
+
 @app.route("/")
 def index():
     """Página principal."""
@@ -243,8 +302,10 @@ def index():
 @app.route("/api/general")
 @cache_respuesta()
 def api_general():
-    """Resultado general (nacional)."""
-    return jsonify(_resultado("nacional", "", "PERÚ"))
+    """Resultado general (nacional) con la tendencia de los últimos snapshots."""
+    data = _resultado("nacional", "", "PERÚ")
+    data["tendencia"] = _tendencia("nacional", "", 3)
+    return jsonify(data)
 
 
 @app.route("/api/regiones")

@@ -65,6 +65,60 @@ body {
   gap: 12px;
 }
 
+/* Aviso de resultados preliminares (avance de actas) */
+.aviso-actas {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 20px;
+  background: rgba(234, 179, 8, 0.12);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.4);
+  color: #fde68a;
+  z-index: 9;
+}
+
+.aviso-actas[hidden] {
+  display: none;
+}
+
+.aviso-actas__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 240px;
+}
+
+.aviso-actas__titulo {
+  font-size: 0.86rem;
+  letter-spacing: 0.2px;
+  color: #fbbf24;
+}
+
+.aviso-actas__detalle {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.aviso-actas__barra {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  height: 10px;
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.aviso-actas__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
 .header__updated {
   font-size: 0.8rem;
   color: var(--text-dim);
@@ -823,6 +877,13 @@ body.modal-abierto {
     align-items: flex-start;
     gap: 4px;
     padding: 10px 16px;
+  }
+  .aviso-actas {
+    padding: 8px 16px;
+    gap: 8px;
+  }
+  .aviso-actas__texto {
+    min-width: 0;
   }
   .header__title {
     font-size: 1.05rem;

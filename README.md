@@ -126,7 +126,7 @@ $env:ONPE_INTERVALO = "120"; python -m src.web
 
 La aplicación es de **solo lectura** (sin login ni base de datos), por lo que el
 endurecimiento se centra en evitar abuso/DoS y en no exponer configuración
-insegura. Se incluyen tres capas de defensa, activas automáticamente:
+insegura. Se incluyen varias capas de defensa, activas automáticamente:
 
 - **Servidor WSGI (gunicorn):** nunca se usa el servidor de desarrollo de Flask.
 - **Cabeceras de seguridad + CSP (Flask-Talisman):** `Content-Security-Policy`,
@@ -135,10 +135,28 @@ insegura. Se incluyen tres capas de defensa, activas automáticamente:
 - **Límite de peticiones por IP (Flask-Limiter):** 120/min global y 30/min en los
   endpoints que agregan datos (`/api/regiones`, `/api/resumen`). Excederlo
   devuelve `HTTP 429`.
+- **Caché de respuestas en memoria (TTL):** las respuestas JSON se cachean unos
+  segundos (`CACHE_TTL`, 20 s por defecto) y se envían con `Cache-Control`. Así
+  un aluvión de peticiones no recalcula ni lee disco en cada request: se sirve la
+  copia ya construida. La caché tiene un tope de entradas con poda para que pedir
+  muchos ubigeos distintos no infle la memoria.
+- **Límite de tamaño de petición:** `MAX_CONTENT_LENGTH` rechaza cuerpos grandes
+  (`HTTP 413`); los estáticos (CSS/JS/imágenes) se cachean 1 día en el navegador.
+- **Errores en JSON:** 404/413/429 devuelven mensajes genéricos sin filtrar
+  detalles internos.
 
 Además, la entrada de usuario (`/api/region/<ubigeo>`) se valida (solo dígitos) y
 `FLASK_DEBUG` está desactivado por defecto (con `debug=True` el depurador de
 Werkzeug permite ejecución remota de código).
+
+> **Importante — protección ante DDoS volumétrico:** el rate limiting por IP frena
+> a un script desde una sola IP, pero **no** detiene un ataque distribuido (botnet
+> con miles de IPs); ninguna defensa a nivel de aplicación lo hace. Para eso, pon
+> un **CDN/WAF delante del dominio**. Lo más sencillo y gratuito es
+> [Cloudflare](https://www.cloudflare.com/): añade tu dominio, apunta el DNS a
+> Cloudflare (proxy activado, nube naranja), y absorberá los ataques volumétricos
+> antes de que lleguen al servidor. Con su caché y el modo *"Under Attack"* la web
+> aguanta picos enormes sin tocar el origen.
 
 ### Variables de entorno de producción
 
@@ -149,6 +167,7 @@ Werkzeug permite ejecución remota de código).
 | `ONPE_RECOLECTOR`    | `1`               | Arranca el recolector dentro del proceso web (gunicorn). |
 | `ONPE_INTERVALO`     | `180`             | Segundos entre cada recolección automática de la ONPE.   |
 | `ONPE_NIVEL_MAXIMO`  | `departamento`    | Nivel máximo a recorrer.                                 |
+| `CACHE_TTL`          | `20`              | Segundos que se cachea cada respuesta JSON en memoria.   |
 
 Hay un archivo [.env.example](.env.example) con todas las variables.
 

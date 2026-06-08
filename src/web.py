@@ -6,6 +6,7 @@ detalle por región, consumiendo los CSV históricos generados por el scraper.
 
 from __future__ import annotations
 
+import functools
 import os
 import re
 import threading
@@ -43,6 +44,14 @@ def _bool_env(nombre: str, defecto: bool = False) -> bool:
 
 app = Flask(__name__)
 
+# Límites de tamaño y caché de archivos estáticos.
+# - MAX_CONTENT_LENGTH: rechaza cuerpos de petición grandes (no usamos POST, así
+#   que cualquier payload voluminoso es abuso). Protección barata contra floods.
+# - SEND_FILE_MAX_AGE_DEFAULT: deja que el navegador/CDN cacheen CSS/JS/imágenes
+#   1 día, reduciendo peticiones repetidas al origen.
+app.config["MAX_CONTENT_LENGTH"] = 32 * 1024  # 32 KB
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 86400  # 1 día
+
 # Detrás del proxy del PaaS: confiar en X-Forwarded-* para IP y esquema reales
 # (necesario para el rate limiting por IP y la detección de HTTPS).
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
@@ -79,6 +88,90 @@ limiter = Limiter(
     default_limits=["120 per minute"],
     storage_uri="memory://",
 )
+
+
+# --- Caché de respuestas en memoria con TTL ---
+# Los datos solo cambian cuando el recolector trae filas nuevas (cada minuto o
+# más). Cachear las respuestas JSON unos segundos hace que un aluvión de
+# peticiones sea barato: en lugar de leer disco y recalcular en cada request, se
+# sirve la copia ya construida. Es la defensa más efectiva (junto a un CDN) ante
+# un script que intente tumbar la web a base de peticiones.
+_CACHE_TTL = float(os.environ.get("CACHE_TTL", "20"))
+_CACHE_MAX = 256  # tope de entradas para que la caché no crezca sin límite
+_cache_store: dict[str, tuple[float, bytes, str]] = {}
+_cache_lock = threading.Lock()
+
+
+def _podar_cache(ahora: float, ttl: float) -> None:
+    """Elimina entradas caducadas y, si aún se excede el tope, las más viejas.
+
+    Evita que pedir muchos ubigeos distintos infle la memoria sin control.
+    Debe llamarse con `_cache_lock` tomado.
+    """
+    if len(_cache_store) < _CACHE_MAX:
+        return
+    caducadas = [k for k, (t, _, _) in _cache_store.items() if ahora - t >= ttl]
+    for k in caducadas:
+        _cache_store.pop(k, None)
+    if len(_cache_store) >= _CACHE_MAX:
+        # Aún lleno: descartar la entrada más antigua.
+        mas_vieja = min(_cache_store, key=lambda k: _cache_store[k][0])
+        _cache_store.pop(mas_vieja, None)
+
+
+def cache_respuesta(ttl: float = _CACHE_TTL):
+    """Cachea la respuesta JSON de una vista durante `ttl` segundos.
+
+    Añade además la cabecera Cache-Control para que navegadores y CDN puedan
+    reutilizar la respuesta sin volver a tocar el servidor.
+    """
+
+    def decorador(fn):
+        @functools.wraps(fn)
+        def envoltorio(*args, **kwargs):
+            partes = [str(a) for a in args]
+            partes += [f"{k}={v}" for k, v in sorted(kwargs.items())]
+            clave = f"{fn.__name__}:" + ":".join(partes)
+            ahora = time.monotonic()
+            with _cache_lock:
+                entrada = _cache_store.get(clave)
+                if entrada and (ahora - entrada[0]) < ttl:
+                    _, datos, mimetype = entrada
+                    resp = app.response_class(datos, mimetype=mimetype)
+                    resp.headers["Cache-Control"] = f"public, max-age={int(ttl)}"
+                    resp.headers["X-Cache"] = "HIT"
+                    return resp
+
+            resultado = fn(*args, **kwargs)
+            datos = resultado.get_data()
+            with _cache_lock:
+                _podar_cache(ahora, ttl)
+                _cache_store[clave] = (ahora, datos, resultado.mimetype)
+            resultado.headers["Cache-Control"] = f"public, max-age={int(ttl)}"
+            resultado.headers["X-Cache"] = "MISS"
+            return resultado
+
+        return envoltorio
+
+    return decorador
+
+
+@app.errorhandler(404)
+def _no_encontrado(_error):
+    """404 en JSON, sin filtrar detalles internos."""
+    return jsonify(error="No encontrado"), 404
+
+
+@app.errorhandler(429)
+def _demasiadas_peticiones(_error):
+    """429 cuando se supera el rate limit."""
+    return jsonify(error="Demasiadas peticiones. Inténtalo en un momento."), 429
+
+
+@app.errorhandler(413)
+def _payload_grande(_error):
+    """413 cuando el cuerpo de la petición excede el límite permitido."""
+    return jsonify(error="Petición demasiado grande"), 413
 
 
 
@@ -148,6 +241,7 @@ def index():
 
 
 @app.route("/api/general")
+@cache_respuesta()
 def api_general():
     """Resultado general (nacional)."""
     return jsonify(_resultado("nacional", "", "PERÚ"))
@@ -155,6 +249,7 @@ def api_general():
 
 @app.route("/api/regiones")
 @limiter.limit("30 per minute")
+@cache_respuesta()
 def api_regiones():
     """Resultados de todas las regiones (departamentos) para el grid."""
     regiones = []
@@ -168,6 +263,7 @@ def api_regiones():
 
 
 @app.route("/api/region/<ubigeo>")
+@cache_respuesta()
 def api_region(ubigeo: str):
     """Detalle de una región (departamento)."""
     if not _UBIGEO_VALIDO.match(ubigeo):
@@ -177,6 +273,7 @@ def api_region(ubigeo: str):
 
 @app.route("/api/resumen")
 @limiter.limit("30 per minute")
+@cache_respuesta()
 def api_resumen():
     """Resumen agregado por regiones: en cuántas gana cada candidato y más."""
     regiones = [

@@ -466,6 +466,26 @@ async function cargarGeneral() {
   const fecha = data.totales ? data.totales.fecha_actualizacion : null;
   document.getElementById("actualizado").textContent =
     "Actualizado: " + fmtFecha(fecha);
+
+  actualizarAvisoActas(data.totales);
+}
+
+// Aviso prominente: deja claro que son resultados preliminares y cuántas actas
+// se han contabilizado a nivel nacional.
+function actualizarAvisoActas(totales) {
+  const aviso = document.getElementById("aviso-actas");
+  if (!aviso) return;
+  if (!totales) {
+    aviso.hidden = true;
+    return;
+  }
+  const pct = Number(totales.actas_contabilizadas) || 0;
+  const restante = Math.max(0, 100 - pct);
+  document.getElementById("aviso-actas-detalle").textContent =
+    `Se ha contabilizado el ${pct.toFixed(2)}% de las actas a nivel nacional. ` +
+    `Falta por contar el ${restante.toFixed(2)}%. Los datos pueden cambiar.`;
+  document.getElementById("aviso-actas-fill").style.width = `${Math.min(pct, 100)}%`;
+  aviso.hidden = false;
 }
 
 async function cargarRegiones() {

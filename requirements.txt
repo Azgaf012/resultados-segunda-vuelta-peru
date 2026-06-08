@@ -1,0 +1,7 @@
+# Dependencias del proyecto
+# Visualización de tablas en consola
+rich>=13.0.0
+# Peticiones HTTP a la API de ONPE
+requests>=2.31.0
+# Servidor web para la visualización
+flask>=3.0.0

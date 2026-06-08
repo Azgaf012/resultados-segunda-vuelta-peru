@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resultados Segunda Vuelta - Perú</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+  </head>
+  <body>
+    <header class="header">
+      <div class="header__inner">
+        <h1 class="header__title">Segunda Vuelta Presidencial · Perú</h1>
+        <div class="header__status">
+          <span id="actualizado" class="header__updated">Cargando…</span>
+          <button id="refrescar" class="btn-refrescar" title="Actualizar">
+            ↻ Actualizar
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- Resultado general -->
+      <section class="card card--general" id="seccion-general">
+        <h2 class="card__title">Resultado General (Nacional)</h2>
+
+        <div class="metrics" id="metrics-general"></div>
+
+        <div class="candidatos candidatos--general" id="candidatos-general">
+          <p class="placeholder">Cargando resultados…</p>
+        </div>
+      </section>
+
+      <!-- Resumen por regiones -->
+      <section class="card card--resumen">
+        <h2 class="card__title">Resumen por Regiones</h2>
+        <div class="resumen" id="resumen">
+          <p class="placeholder">Calculando resumen…</p>
+        </div>
+      </section>
+
+      <!-- Detalle por región -->
+      <section class="card card--regiones">
+        <div class="card__header">
+          <h2 class="card__title">Resultados por Región</h2>
+          <input
+            type="search"
+            id="buscar-region"
+            class="selector"
+            placeholder="Buscar región…"
+          />
+        </div>
+        <p class="card__nota">
+          El porcentaje junto al nombre de cada región indica el avance de actas
+          contabilizadas.
+        </p>
+
+        <div class="grid-regiones" id="grid-regiones">
+          <p class="placeholder">Cargando regiones…</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        Datos: API pública de ONPE · Esta es una visualización no oficial.
+      </p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>

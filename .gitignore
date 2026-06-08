@@ -1,0 +1,20 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Archivos del sistema / IDE
+.vscode/
+.idea/
+*.log
+
+# Distribución
+build/
+dist/

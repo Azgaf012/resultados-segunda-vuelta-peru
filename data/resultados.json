@@ -1,0 +1,16 @@
+{
+  "titulo": "Resultados Segunda Vuelta - Perú",
+  "fecha": "2026-06-07",
+  "candidatos": [
+    {
+      "nombre": "Candidato A",
+      "partido": "Partido A",
+      "votos": 0
+    },
+    {
+      "nombre": "Candidato B",
+      "partido": "Partido B",
+      "votos": 0
+    }
+  ]
+}

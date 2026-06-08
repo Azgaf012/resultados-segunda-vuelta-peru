@@ -454,6 +454,17 @@ def api_resumen():
 _estado = {"ultima_recoleccion": None, "ultimo_error": None, "filas_nuevas": 0}
 
 
+@app.route("/health")
+def health():
+    """Endpoint mínimo para monitores de uptime (UptimeRobot, etc.).
+
+    No lee disco ni hace cálculos: responde 200 inmediatamente para mantener
+    el servicio despierto en Render free tier. Configura el monitor externo
+    para hacer ping a /health cada 5 minutos.
+    """
+    return "", 200
+
+
 @app.route("/api/estado")
 def api_estado():
     """Estado del recolector automático en segundo plano."""

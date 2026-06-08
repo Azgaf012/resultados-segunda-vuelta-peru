@@ -1,0 +1,23 @@
+# Infraestructura como código para Render (https://render.com).
+# Crea el servicio automáticamente al conectar el repositorio.
+services:
+  - type: web
+    name: resultados-segunda-vuelta-peru
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT src.web:app
+    healthCheckPath: /api/estado
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.3"
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: FORCE_HTTPS
+        value: "1"
+      - key: ONPE_RECOLECTOR
+        value: "1"
+      - key: ONPE_INTERVALO
+        value: "180"
+      - key: ONPE_NIVEL_MAXIMO
+        value: departamento

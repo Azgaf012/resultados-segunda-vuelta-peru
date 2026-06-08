@@ -7,11 +7,16 @@ detalle por región, consumiendo los CSV históricos generados por el scraper.
 from __future__ import annotations
 
 import os
+import re
 import threading
 import time
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, abort, jsonify, render_template
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .imagenes import ruta_candidato, ruta_partido
 from .onpe_client import OnpeClient
@@ -24,7 +29,57 @@ from .storage import (
 
 DIRECTORIO_DATOS = Path(__file__).resolve().parent.parent / "data"
 
+# Formato válido de ubigeo: solo dígitos (2 a 6) para evitar entradas maliciosas.
+_UBIGEO_VALIDO = re.compile(r"^\d{2,6}$")
+
+
+def _bool_env(nombre: str, defecto: bool = False) -> bool:
+    """Lee una variable de entorno booleana ("1"/"true"/"yes")."""
+    valor = os.environ.get(nombre)
+    if valor is None:
+        return defecto
+    return valor.strip().lower() in {"1", "true", "yes", "on"}
+
+
 app = Flask(__name__)
+
+# Detrás del proxy del PaaS: confiar en X-Forwarded-* para IP y esquema reales
+# (necesario para el rate limiting por IP y la detección de HTTPS).
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+# Cabeceras de seguridad + Content Security Policy.
+# Nota: la UI genera estilos inline dinámicos (donuts conic-gradient, colores de
+# partido), por eso style-src permite 'unsafe-inline'. Los scripts son externos
+# (app.js), así que script-src se mantiene estricto.
+_CSP = {
+    "default-src": "'self'",
+    "script-src": "'self'",
+    "style-src": "'self' 'unsafe-inline'",
+    "img-src": "'self' data:",
+    "font-src": "'self'",
+    "connect-src": "'self'",
+    "base-uri": "'self'",
+    "frame-ancestors": "'none'",
+    "object-src": "'none'",
+}
+_FORCE_HTTPS = _bool_env("FORCE_HTTPS", False)
+Talisman(
+    app,
+    content_security_policy=_CSP,
+    force_https=_FORCE_HTTPS,
+    strict_transport_security=_FORCE_HTTPS,
+    frame_options="DENY",
+    referrer_policy="strict-origin-when-cross-origin",
+)
+
+# Límite de peticiones por IP para mitigar abuso/DoS.
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["120 per minute"],
+    storage_uri="memory://",
+)
+
 
 
 def _num(valor: object, defecto: float = 0.0) -> float:
@@ -99,6 +154,7 @@ def api_general():
 
 
 @app.route("/api/regiones")
+@limiter.limit("30 per minute")
 def api_regiones():
     """Resultados de todas las regiones (departamentos) para el grid."""
     regiones = []
@@ -114,10 +170,13 @@ def api_regiones():
 @app.route("/api/region/<ubigeo>")
 def api_region(ubigeo: str):
     """Detalle de una región (departamento)."""
+    if not _UBIGEO_VALIDO.match(ubigeo):
+        abort(404)
     return jsonify(_resultado("departamento", ubigeo, ubigeo))
 
 
 @app.route("/api/resumen")
+@limiter.limit("30 per minute")
 def api_resumen():
     """Resumen agregado por regiones: en cuántas gana cada candidato y más."""
     regiones = [
@@ -263,16 +322,33 @@ def iniciar_recolector(intervalo: float, nivel_maximo: str) -> None:
     hilo.start()
 
 
+# Arranque del recolector a nivel de módulo para entornos WSGI (gunicorn), que
+# importan `src.web:app` y nunca ejecutan main(). Se activa solo si
+# ONPE_RECOLECTOR=1. Con gunicorn --workers 1 no se duplica el hilo.
+if _bool_env("ONPE_RECOLECTOR", False):
+    iniciar_recolector(
+        float(os.environ.get("ONPE_INTERVALO", "180")),
+        os.environ.get("ONPE_NIVEL_MAXIMO", "departamento"),
+    )
+
+
 def main() -> None:
-    """Inicia el servidor web y el recolector automático en segundo plano."""
+    """Inicia el servidor web y el recolector automático (modo desarrollo local).
+
+    En producción se usa un servidor WSGI (gunicorn) que importa `app`; el
+    recolector se arranca con la variable de entorno ONPE_RECOLECTOR=1.
+    """
+    debug = _bool_env("FLASK_DEBUG", False)
     intervalo = float(os.environ.get("ONPE_INTERVALO", "60"))
     nivel_maximo = os.environ.get("ONPE_NIVEL_MAXIMO", "departamento")
 
+    # Evitar doble arranque: si ya se inició a nivel de módulo, no repetir.
+    ya_iniciado = _bool_env("ONPE_RECOLECTOR", False)
     # Con el reloader de Flask activo, solo el proceso hijo debe recolectar.
-    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    if not ya_iniciado and (not debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true"):
         iniciar_recolector(intervalo, nivel_maximo)
 
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=debug)
 
 
 if __name__ == "__main__":

@@ -391,16 +391,12 @@ async function cargarResumen() {
 }
 
 async function refrescarTodo() {
-  const btn = document.getElementById("refrescar");
-  btn.classList.add("cargando");
   try {
     await Promise.all([cargarGeneral(), cargarResumen(), cargarRegiones()]);
   } catch (err) {
     document.getElementById("actualizado").textContent =
       "Error al cargar datos";
     console.error(err);
-  } finally {
-    btn.classList.remove("cargando");
   }
 }
 
@@ -410,9 +406,6 @@ document.addEventListener("DOMContentLoaded", () => {
     .addEventListener("input", (e) =>
       renderGridRegiones(cacheRegiones, e.target.value)
     );
-  document
-    .getElementById("refrescar")
-    .addEventListener("click", refrescarTodo);
 
   conectarTooltips(document.getElementById("grid-regiones"));
 

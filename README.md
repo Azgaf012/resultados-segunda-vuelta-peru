@@ -12,7 +12,9 @@ en CSV histórico y muestra siempre el snapshot más reciente en consola.
   datos se van agregando conforme la ONPE actualiza el conteo.
 - Visualización del resultado más actualizado en consola con tablas (`rich`).
 - Página web dinámica (Flask) con el resultado general y el detalle por región,
-  con barras animadas y auto-refresco.
+  con gráficos de dona, resumen y auto-refresco.
+- Apta para producción: servidor WSGI (gunicorn), cabeceras de seguridad + CSP,
+  límite de peticiones por IP y validación de entrada.
 - Ejecución en bucle continuo con intervalo configurable.
 
 ## Estructura del proyecto
@@ -37,6 +39,9 @@ resultados-segunda-vuelta-peru/
 │   └── test_models.py         # Pruebas unitarias
 ├── main.py                    # Punto de entrada (bucle de recolección)
 ├── requirements.txt           # Dependencias del proyecto
+├── Procfile                   # Comando de inicio en producción (gunicorn)
+├── render.yaml                # Infraestructura como código (Render)
+├── .env.example               # Plantilla de variables de entorno
 ├── .gitignore
 └── README.md
 ```
@@ -116,6 +121,71 @@ Ejemplo (PowerShell) para refrescar cada 2 minutos:
 ```powershell
 $env:ONPE_INTERVALO = "120"; python -m src.web
 ```
+
+## Despliegue en producción
+
+La aplicación es de **solo lectura** (sin login ni base de datos), por lo que el
+endurecimiento se centra en evitar abuso/DoS y en no exponer configuración
+insegura. Se incluyen tres capas de defensa, activas automáticamente:
+
+- **Servidor WSGI (gunicorn):** nunca se usa el servidor de desarrollo de Flask.
+- **Cabeceras de seguridad + CSP (Flask-Talisman):** `Content-Security-Policy`,
+  `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`
+  y, con `FORCE_HTTPS=1`, redirección a HTTPS + HSTS.
+- **Límite de peticiones por IP (Flask-Limiter):** 120/min global y 30/min en los
+  endpoints que agregan datos (`/api/regiones`, `/api/resumen`). Excederlo
+  devuelve `HTTP 429`.
+
+Además, la entrada de usuario (`/api/region/<ubigeo>`) se valida (solo dígitos) y
+`FLASK_DEBUG` está desactivado por defecto (con `debug=True` el depurador de
+Werkzeug permite ejecución remota de código).
+
+### Variables de entorno de producción
+
+| Variable             | Valor recomendado | Descripción                                              |
+| -------------------- | ----------------- | -------------------------------------------------------- |
+| `FLASK_DEBUG`        | `0`               | Modo depuración. **Siempre 0 en producción.**            |
+| `FORCE_HTTPS`        | `1`               | Redirige a HTTPS y activa HSTS (detrás de un proxy TLS). |
+| `ONPE_RECOLECTOR`    | `1`               | Arranca el recolector dentro del proceso web (gunicorn). |
+| `ONPE_INTERVALO`     | `180`             | Segundos entre cada recolección automática de la ONPE.   |
+| `ONPE_NIVEL_MAXIMO`  | `departamento`    | Nivel máximo a recorrer.                                 |
+
+Hay un archivo [.env.example](.env.example) con todas las variables.
+
+### Probar el servidor de producción en local
+
+> gunicorn no funciona en Windows. En Windows usa WSL o prueba con el servidor de
+> desarrollo (`python -m src.web`). En Linux/macOS:
+
+```bash
+ONPE_RECOLECTOR=1 gunicorn --workers 1 --threads 4 --bind 0.0.0.0:8000 src.web:app
+```
+
+### Desplegar en Render
+
+1. Sube el repositorio a GitHub (ya incluye [Procfile](Procfile) y
+   [render.yaml](render.yaml)).
+2. En [Render](https://render.com): **New → Blueprint** y selecciona el repo; se
+   leerá `render.yaml` con el comando de inicio y las variables de entorno.
+   (Alternativa: **New → Web Service**, _Build_ `pip install -r requirements.txt`,
+   _Start_ el comando del `Procfile`).
+3. Render asigna un subdominio `*.onrender.com` con **HTTPS automático**.
+
+> **Notas del plan gratuito:**
+>
+> - El sistema de archivos es **efímero**: el histórico en `data/*.csv` se borra
+>   en cada redeploy, pero el snapshot más reciente se reconstruye solo en el
+>   primer ciclo del recolector. Para conservar el histórico, añade un disco
+>   persistente.
+> - El servicio "duerme" tras inactividad; el recolector se reanuda con la
+>   siguiente visita.
+
+### Usa un único worker
+
+El recolector vive en un hilo dentro del proceso web. Mantén **`--workers 1`**
+(como en el `Procfile`/`render.yaml`) para no ejecutar varios recolectores en
+paralelo. Para escalar horizontalmente, separa el recolector en un servicio
+aparte.
 
 ## Datos
 

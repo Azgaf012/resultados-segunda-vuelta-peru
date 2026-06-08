@@ -7,6 +7,7 @@ detalle por región, consumiendo los CSV históricos generados por el scraper.
 from __future__ import annotations
 
 import functools
+import hashlib
 import os
 import re
 import threading
@@ -45,6 +46,16 @@ def _bool_env(nombre: str, defecto: bool = False) -> bool:
 
 
 app = Flask(__name__)
+
+# Hash corto basado en el momento de inicio del proceso: invalida el caché del
+# navegador para CSS/JS en cada nuevo deploy, sin afectar la URL canónica.
+_STATIC_VERSION = hashlib.md5(str(time.time()).encode()).hexdigest()[:8]
+
+
+@app.context_processor
+def _inyectar_version():
+    return {"static_v": _STATIC_VERSION}
+
 
 # Límites de tamaño y caché de archivos estáticos.
 # - MAX_CONTENT_LENGTH: rechaza cuerpos de petición grandes (no usamos POST, así

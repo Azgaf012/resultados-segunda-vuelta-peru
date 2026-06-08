@@ -6,7 +6,7 @@
     <title>Resultados Segunda Vuelta - Perú</title>
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/styles.css') }}"
+      href="{{ url_for('static', filename='css/styles.css') }}?v={{ static_v }}"
     />
   </head>
   <body>
@@ -43,8 +43,6 @@
         <div class="candidatos candidatos--general" id="candidatos-general">
           <p class="placeholder">Cargando resultados…</p>
         </div>
-
-        <div class="tendencia" id="tendencia-general"></div>
       </section>
 
       <!-- Resumen por regiones -->
@@ -84,6 +82,6 @@
       </p>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_v }}"></script>
   </body>
 </html>

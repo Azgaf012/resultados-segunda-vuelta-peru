@@ -59,7 +59,7 @@ function renderMetrics(contenedor, totales) {
       <div class="metric">
         <div class="metric__label">${m.label}</div>
         <div class="metric__value">${m.valor}</div>
-      </div>`
+      </div>`,
     )
     .join("");
 }
@@ -67,16 +67,14 @@ function renderMetrics(contenedor, totales) {
 // Tarjeta detallada de candidato (sección general).
 function renderCandidatosGeneral(contenedor, participantes, tendencia) {
   if (!participantes || participantes.length === 0) {
-    contenedor.innerHTML =
-      '<p class="placeholder">Aún no hay datos para este ámbito.</p>';
+    contenedor.innerHTML = '<p class="placeholder">Aún no hay datos para este ámbito.</p>';
     return;
   }
   const maxPct = Math.max(...participantes.map((p) => p.pct_validos), 1);
-  const tarjetas = participantes
-    .map((p, i) => {
-      const lider = i === 0 ? "lider" : "";
-      const color = colorPartido(p.codigo).color;
-      return `
+  const tarjetas = participantes.map((p, i) => {
+    const lider = i === 0 ? "lider" : "";
+    const color = colorPartido(p.codigo).color;
+    return `
       <div class="candidato ${lider}">
         <img class="candidato__foto" src="${urlEstatica(p.foto)}"
              alt="${p.candidato}" onerror="this.style.visibility='hidden'" />
@@ -98,7 +96,7 @@ function renderCandidatosGeneral(contenedor, participantes, tendencia) {
           <div class="candidato__votos">${fmtMiles.format(p.votos)} votos válidos</div>
         </div>
       </div>`;
-    });
+  });
 
   // Separador de diferencia entre los dos candidatos.
   let separador = "";
@@ -137,8 +135,7 @@ function renderCandidatosGeneral(contenedor, participantes, tendencia) {
 function renderResumen(data) {
   const cont = document.getElementById("resumen");
   if (!data || !data.candidatos || data.candidatos.length === 0) {
-    cont.innerHTML =
-      '<p class="placeholder">Aún no hay datos de regiones.</p>';
+    cont.innerHTML = '<p class="placeholder">Aún no hay datos de regiones.</p>';
     return;
   }
 
@@ -158,9 +155,7 @@ function renderResumen(data) {
     .map((c, i) => {
       const color = colorPartido(c.codigo).color;
       const clase = i === 0 ? "resumen-cand--top" : "";
-      const bastion = c.bastion
-        ? `${c.bastion.nombre} · ${fmtPct1(c.bastion.pct)}`
-        : "—";
+      const bastion = c.bastion ? `${c.bastion.nombre} · ${fmtPct1(c.bastion.pct)}` : "—";
       return `
       <div class="resumen-cand ${clase}" style="--cp:${color}">
         <div class="resumen-cand__cab">
@@ -200,40 +195,14 @@ function renderResumen(data) {
 
   const extras = [];
   if (data.mas_holgada) {
-    extras.push(
-      dato(
-        "Mayor ventaja",
-        data.mas_holgada.nombre,
-        `${data.mas_holgada.agrupacion} · +${fmtPct1(data.mas_holgada.diferencia)}`,
-        colorPartido(data.mas_holgada.codigo).color
-      )
-    );
+    extras.push(dato("Mayor ventaja", data.mas_holgada.nombre, `${data.mas_holgada.agrupacion} · +${fmtPct1(data.mas_holgada.diferencia)}`, colorPartido(data.mas_holgada.codigo).color));
   }
   if (data.mas_ajustada) {
-    extras.push(
-      dato(
-        "Más reñida",
-        data.mas_ajustada.nombre,
-        `${data.mas_ajustada.agrupacion} · +${fmtPct1(data.mas_ajustada.diferencia)}`,
-        colorPartido(data.mas_ajustada.codigo).color
-      )
-    );
+    extras.push(dato("Más reñida", data.mas_ajustada.nombre, `${data.mas_ajustada.agrupacion} · +${fmtPct1(data.mas_ajustada.diferencia)}`, colorPartido(data.mas_ajustada.codigo).color));
   }
-  extras.push(
-    dato(
-      "Ventaja promedio",
-      `+${fmtPct1(data.ventaja_promedio)}`,
-      "del ganador por región"
-    )
-  );
+  extras.push(dato("Ventaja promedio", `+${fmtPct1(data.ventaja_promedio)}`, "del ganador por región"));
   if (data.mayor_participacion) {
-    extras.push(
-      dato(
-        "Mayor participación",
-        data.mayor_participacion.nombre,
-        `${fmtPct1(data.mayor_participacion.participacion)} de asistencia`
-      )
-    );
+    extras.push(dato("Mayor participación", data.mayor_participacion.nombre, `${fmtPct1(data.mayor_participacion.participacion)} de asistencia`));
   }
 
   cont.innerHTML = `
@@ -254,9 +223,7 @@ function tarjetaRegion(region) {
   }
   const lider = p[0];
   const cgan = colorPartido(lider.codigo);
-  const actas = region.totales
-    ? `${Number(region.totales.actas_contabilizadas).toFixed(0)}%`
-    : "";
+  const actas = region.totales ? `${Number(region.totales.actas_contabilizadas).toFixed(0)}%` : "";
 
   // Donut con la proporción de votos válidos entre los participantes.
   const totalPct = p.reduce((s, c) => s + c.pct_validos, 0) || 1;
@@ -468,9 +435,7 @@ function conectarModalRegiones(grid) {
 function renderGridRegiones(regiones, filtro = "") {
   const grid = document.getElementById("grid-regiones");
   const texto = filtro.trim().toLowerCase();
-  const visibles = texto
-    ? regiones.filter((r) => r.nombre.toLowerCase().includes(texto))
-    : regiones;
+  const visibles = texto ? regiones.filter((r) => r.nombre.toLowerCase().includes(texto)) : regiones;
 
   if (!visibles.length) {
     grid.innerHTML = '<p class="placeholder">Sin regiones que coincidan.</p>';
@@ -482,15 +447,10 @@ function renderGridRegiones(regiones, filtro = "") {
 async function cargarGeneral() {
   const data = await obtenerJSON("/api/general");
   renderMetrics(document.getElementById("metrics-general"), data.totales);
-  renderCandidatosGeneral(
-    document.getElementById("candidatos-general"),
-    data.participantes,
-    data.tendencia
-  );
+  renderCandidatosGeneral(document.getElementById("candidatos-general"), data.participantes, data.tendencia);
 
   const fecha = data.totales ? data.totales.fecha_actualizacion : null;
-  document.getElementById("actualizado").textContent =
-    "Actualizado: " + fmtFecha(fecha);
+  document.getElementById("actualizado").textContent = "Actualizado: " + fmtFecha(fecha);
 
   actualizarAvisoActas(data.totales);
 }
@@ -506,9 +466,7 @@ function actualizarAvisoActas(totales) {
   }
   const pct = Number(totales.actas_contabilizadas) || 0;
   const restante = Math.max(0, 100 - pct);
-  document.getElementById("aviso-actas-detalle").textContent =
-    `Se ha contabilizado el ${pct.toFixed(2)}% de las actas a nivel nacional. ` +
-    `Falta por contar el ${restante.toFixed(2)}%. Los datos pueden cambiar.`;
+  document.getElementById("aviso-actas-detalle").textContent = `Se ha contabilizado el ${pct.toFixed(2)}% de las actas a nivel nacional. ` + `Falta por contar el ${restante.toFixed(2)}%. Los datos pueden cambiar.`;
   document.getElementById("aviso-actas-fill").style.width = `${Math.min(pct, 100)}%`;
   aviso.hidden = false;
 }
@@ -518,9 +476,7 @@ let cachePaises = [];
 function renderGridPaises(paises, filtro = "") {
   const grid = document.getElementById("grid-paises");
   const texto = filtro.trim().toLowerCase();
-  const visibles = texto
-    ? paises.filter((r) => r.nombre.toLowerCase().includes(texto))
-    : paises;
+  const visibles = texto ? paises.filter((r) => r.nombre.toLowerCase().includes(texto)) : paises;
 
   if (!visibles.length) {
     grid.innerHTML = '<p class="placeholder">Sin países que coincidan.</p>';
@@ -566,26 +522,14 @@ function renderActasFaltantes(data) {
     return;
   }
   seccion.hidden = false;
-  renderTablaActas(
-    document.getElementById("tabla-actas-regiones"),
-    data.actas_faltantes_regiones,
-    "región"
-  );
-  renderTablaActas(
-    document.getElementById("tabla-actas-paises"),
-    data.actas_faltantes_paises,
-    "país"
-  );
+  renderTablaActas(document.getElementById("tabla-actas-regiones"), data.actas_faltantes_regiones, "región");
+  renderTablaActas(document.getElementById("tabla-actas-paises"), data.actas_faltantes_paises, "país");
 }
 
 async function cargarExterior() {
   const data = await obtenerJSON("/api/exterior");
   renderMetrics(document.getElementById("metrics-exterior"), data.totales);
-  renderCandidatosGeneral(
-    document.getElementById("candidatos-exterior"),
-    data.participantes,
-    data.tendencia
-  );
+  renderCandidatosGeneral(document.getElementById("candidatos-exterior"), data.participantes, data.tendencia);
 }
 
 async function cargarPaises() {
@@ -608,32 +552,17 @@ async function cargarResumen() {
 
 async function refrescarTodo() {
   try {
-    await Promise.all([
-      cargarGeneral(),
-      cargarResumen(),
-      cargarRegiones(),
-      cargarExterior(),
-      cargarPaises(),
-    ]);
+    await Promise.all([cargarGeneral(), cargarResumen(), cargarRegiones(), cargarExterior(), cargarPaises()]);
   } catch (err) {
-    document.getElementById("actualizado").textContent =
-      "Error al cargar datos";
+    document.getElementById("actualizado").textContent = "Error al cargar datos";
     console.error(err);
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document
-    .getElementById("buscar-region")
-    .addEventListener("input", (e) =>
-      renderGridRegiones(cacheRegiones, e.target.value)
-    );
+  document.getElementById("buscar-region").addEventListener("input", (e) => renderGridRegiones(cacheRegiones, e.target.value));
 
-  document
-    .getElementById("buscar-pais")
-    .addEventListener("input", (e) =>
-      renderGridPaises(cachePaises, e.target.value)
-    );
+  document.getElementById("buscar-pais").addEventListener("input", (e) => renderGridPaises(cachePaises, e.target.value));
 
   conectarTooltips(document.getElementById("grid-regiones"));
   conectarModalRegiones(document.getElementById("grid-regiones"));

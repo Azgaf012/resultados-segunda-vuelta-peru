@@ -407,6 +407,10 @@ def api_resumen():
         participantes = region["participantes"]
         if not participantes:
             continue
+        # Ignorar regiones sin actas contabilizadas
+        totales_r = region.get("totales") or {}
+        if not totales_r.get("contabilizadas", 0):
+            continue
         regiones_contadas += 1
         lider = participantes[0]
 
@@ -517,6 +521,55 @@ def api_resumen():
         })
     actas_faltantes_paises.sort(key=lambda x: x["pendientes"], reverse=True)
 
+    # Resumen por países (exterior): cuántos países gana cada candidato.
+    paises_data = [
+        _resultado("pais", a["ubigeo"], a["nombre_ubigeo"])
+        for a in listar_ambitos(DIRECTORIO_DATOS, "pais")
+    ]
+    paises_candidatos: dict[str, dict] = {}
+    paises_contados = 0
+    for pais in paises_data:
+        participantes = pais["participantes"]
+        if not participantes:
+            continue
+        # Ignorar países sin actas contabilizadas
+        totales_p = pais.get("totales") or {}
+        if not totales_p.get("contabilizadas", 0):
+            continue
+        paises_contados += 1
+        lider = participantes[0]
+        for p in participantes:
+            clave = p["candidato"]
+            acc = paises_candidatos.setdefault(
+                clave,
+                {
+                    "candidato": p["candidato"],
+                    "agrupacion": p["agrupacion"],
+                    "codigo": p["codigo"],
+                    "foto": p["foto"],
+                    "logo": p["logo"],
+                    "paises_ganados": 0,
+                    "votos": 0,
+                    "bastion": None,
+                },
+            )
+            acc["votos"] += p["votos"]
+            if acc["bastion"] is None or p["pct_validos"] > acc["bastion"]["pct"]:
+                acc["bastion"] = {"nombre": pais["nombre"], "pct": p["pct_validos"]}
+            if p is lider:
+                acc["paises_ganados"] += 1
+
+    resumen_candidatos_paises = sorted(
+        paises_candidatos.values(),
+        key=lambda c: c["paises_ganados"],
+        reverse=True,
+    )
+    votos_totales_paises = sum(c["votos"] for c in resumen_candidatos_paises)
+    for c in resumen_candidatos_paises:
+        c["pct_votos"] = (
+            round(c["votos"] / votos_totales_paises * 100, 2) if votos_totales_paises else 0
+        )
+
     return jsonify(
         {
             "total_regiones": regiones_contadas,
@@ -527,6 +580,8 @@ def api_resumen():
             "mayor_participacion": mayor_participacion,
             "actas_faltantes_regiones": actas_faltantes_regiones,
             "actas_faltantes_paises": actas_faltantes_paises,
+            "total_paises": paises_contados,
+            "candidatos_paises": resumen_candidatos_paises,
         }
     )
 

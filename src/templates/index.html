@@ -1,13 +1,10 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Resultados Segunda Vuelta - Perú</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/styles.css') }}?v={{ static_v }}"
-    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v={{ static_v }}" />
   </head>
   <body>
     <header class="header">
@@ -15,9 +12,7 @@
         <h1 class="header__title">Segunda Vuelta Presidencial · Perú</h1>
         <div class="header__status">
           <span id="actualizado" class="header__updated">Cargando…</span>
-          <button id="btn-info" class="btn-info" type="button" title="Acerca de y fuente de datos">
-            ⓘ Acerca de
-          </button>
+          <button id="btn-info" class="btn-info" type="button" title="Acerca de y fuente de datos">ⓘ Acerca de</button>
         </div>
       </div>
     </header>
@@ -29,7 +24,7 @@
         <span class="aviso-actas__detalle" id="aviso-actas-detalle"></span>
       </div>
       <div class="aviso-actas__barra" title="Avance de actas contabilizadas a nivel nacional">
-        <div class="aviso-actas__fill" id="aviso-actas-fill" style="width:0"></div>
+        <div class="aviso-actas__fill" id="aviso-actas-fill" style="width: 0"></div>
       </div>
     </div>
 
@@ -46,79 +41,54 @@
           </div>
         </section>
 
-        <!-- Resumen por regiones -->
+        <!-- Resumen por regiones / países -->
         <section class="card card--resumen">
-          <h2 class="card__title">Resumen por Regiones</h2>
-          <div class="resumen" id="resumen">
-            <p class="placeholder">Calculando resumen…</p>
+          <div class="regiones-tabs">
+            <button class="regiones-tab regiones-tab--activo" id="tab-resumen-regiones" type="button">Regiones</button>
+            <button class="regiones-tab" id="tab-resumen-paises" type="button">Países · Exterior</button>
+          </div>
+          <div id="panel-resumen-regiones">
+            <div class="resumen" id="resumen">
+              <p class="placeholder">Calculando resumen…</p>
+            </div>
+          </div>
+          <div id="panel-resumen-paises" hidden>
+            <div class="resumen" id="resumen-paises">
+              <p class="placeholder">Calculando resumen…</p>
+            </div>
           </div>
           <div class="actas-faltantes" id="actas-faltantes" hidden>
-            <h3 class="actas-faltantes__titulo">Actas pendientes de contabilizar</h3>
-            <div class="actas-tabs">
-              <button class="actas-tab actas-tab--activo" id="tab-regiones" type="button">Por región</button>
-              <button class="actas-tab" id="tab-paises" type="button">Por país (exterior)</button>
-            </div>
-            <div id="tabla-actas-regiones"></div>
-            <div id="tabla-actas-paises" hidden></div>
+            <h3 class="actas-faltantes__titulo">Actas pendientes</h3>
+            <div class="actas-totales" id="actas-totales"></div>
           </div>
         </section>
 
-        <!-- Detalle por región -->
+        <!-- Detalle por región / países exterior -->
         <section class="card card--regiones">
-          <div class="card__header">
-            <h2 class="card__title">Resultados por Región</h2>
-            <input
-              type="search"
-              id="buscar-region"
-              class="selector"
-              placeholder="Buscar región…"
-            />
+          <div class="regiones-tabs">
+            <button class="regiones-tab regiones-tab--activo" id="tab-nacional" type="button">Regiones</button>
+            <button class="regiones-tab" id="tab-exterior" type="button">Países · Exterior</button>
           </div>
-          <p class="card__nota">
-            El porcentaje junto al nombre de cada región indica el avance de actas
-            contabilizadas.
-          </p>
-
-          <div class="grid-regiones" id="grid-regiones">
-            <p class="placeholder">Cargando regiones…</p>
+          <div class="card__header">
+            <input type="search" id="buscar-grid" class="selector" placeholder="Buscar región…" />
+          </div>
+          <p class="card__nota">El porcentaje indica el avance de actas contabilizadas. Clic para ver detalle.</p>
+          <div id="panel-nacional">
+            <div class="grid-regiones" id="grid-regiones">
+              <p class="placeholder">Cargando regiones…</p>
+            </div>
+          </div>
+          <div id="panel-exterior" hidden>
+            <div class="grid-regiones" id="grid-paises">
+              <p class="placeholder">Cargando países…</p>
+            </div>
           </div>
         </section>
       </div>
-
-      <!-- Voto exterior -->
-      <section class="card card--exterior" id="seccion-exterior">
-        <h2 class="card__title">Voto en el Exterior</h2>
-
-        <div class="metrics" id="metrics-exterior"></div>
-
-        <div class="candidatos candidatos--exterior" id="candidatos-exterior">
-          <p class="placeholder">Cargando resultados del exterior…</p>
-        </div>
-
-        <div class="card__header card__header--sub">
-          <h3 class="card__subtitle">Resultados por País</h3>
-          <input
-            type="search"
-            id="buscar-pais"
-            class="selector"
-            placeholder="Buscar país…"
-          />
-        </div>
-        <p class="card__nota">
-          El porcentaje junto al nombre de cada país indica el avance de actas
-          contabilizadas.
-        </p>
-        <div class="grid-regiones" id="grid-paises">
-          <p class="placeholder">Cargando países…</p>
-        </div>
-      </section>
     </main>
 
     <footer class="footer">
-      <p>
-        Fuente: API pública de la ONPE · Visualización no oficial · Resultados
-        preliminares · <button id="btn-info-footer" class="enlace-info" type="button">Más información</button>
-      </p>
+      <p>Fuente: API pública de la ONPE · Visualización no oficial · Resultados preliminares · <button id="btn-info-footer" class="enlace-info" type="button">Más información</button></p>
     </footer>
 
     <script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_v }}"></script>

@@ -185,30 +185,63 @@ function renderResumen(data) {
     })
     .join("");
 
-  // Datos globales destacados.
-  const dato = (label, valor, sub, color) => `
-    <div class="resumen-dato">
-      <div class="resumen-dato__label">${label}</div>
-      <div class="resumen-dato__valor"${color ? ` style="color:${color}"` : ""}>${valor}</div>
-      <div class="resumen-dato__sub">${sub || ""}</div>
-    </div>`;
-
-  const extras = [];
-  if (data.mas_holgada) {
-    extras.push(dato("Mayor ventaja", data.mas_holgada.nombre, `${data.mas_holgada.agrupacion} · +${fmtPct1(data.mas_holgada.diferencia)}`, colorPartido(data.mas_holgada.codigo).color));
-  }
-  if (data.mas_ajustada) {
-    extras.push(dato("Más reñida", data.mas_ajustada.nombre, `${data.mas_ajustada.agrupacion} · +${fmtPct1(data.mas_ajustada.diferencia)}`, colorPartido(data.mas_ajustada.codigo).color));
-  }
-  extras.push(dato("Ventaja promedio", `+${fmtPct1(data.ventaja_promedio)}`, "del ganador por región"));
-  if (data.mayor_participacion) {
-    extras.push(dato("Mayor participación", data.mayor_participacion.nombre, `${fmtPct1(data.mayor_participacion.participacion)} de asistencia`));
-  }
-
   cont.innerHTML = `
     <div class="reparto" title="Reparto de regiones">${segmentos}</div>
-    <div class="resumen-cands">${tarjetas}</div>
-    <div class="resumen-datos">${extras.join("")}</div>`;
+    <div class="resumen-cands">${tarjetas}</div>`;
+}
+
+function renderResumenPaises(data) {
+  const cont = document.getElementById("resumen-paises");
+  if (!cont) return;
+  if (!data || !data.candidatos_paises || data.candidatos_paises.length === 0) {
+    cont.innerHTML = '<p class="placeholder">Sin datos de países.</p>';
+    return;
+  }
+  const total = data.total_paises || 1;
+  const segmentos = data.candidatos_paises
+    .map((c) => {
+      const color = colorPartido(c.codigo).color;
+      const ancho = (c.paises_ganados / total) * 100;
+      return `<div class="reparto__seg" style="width:${ancho}%;background:${color}"
+                   title="${c.agrupacion}: ${c.paises_ganados}"></div>`;
+    })
+    .join("");
+  const tarjetas = data.candidatos_paises
+    .map((c, i) => {
+      const color = colorPartido(c.codigo).color;
+      const clase = i === 0 ? "resumen-cand--top" : "";
+      const bastion = c.bastion ? `${c.bastion.nombre} · ${fmtPct1(c.bastion.pct)}` : "—";
+      return `
+      <div class="resumen-cand ${clase}" style="--cp:${color}">
+        <div class="resumen-cand__cab">
+          <img class="resumen-cand__logo" src="${urlEstatica(c.logo)}"
+               alt="" onerror="this.style.display='none'" />
+          <span class="resumen-cand__partido">${c.agrupacion}</span>
+        </div>
+        <div class="resumen-cand__num" style="color:${color}">
+          ${c.paises_ganados}
+          <span class="resumen-cand__num-sub">/ ${total} países</span>
+        </div>
+        <div class="resumen-cand__filas">
+          <div class="resumen-cand__fila">
+            <span>Votos (exterior)</span>
+            <strong>${fmtMiles.format(c.votos)}</strong>
+          </div>
+          <div class="resumen-cand__fila">
+            <span>% del total</span>
+            <strong style="color:${color}">${fmtPct1(c.pct_votos)}</strong>
+          </div>
+          <div class="resumen-cand__fila">
+            <span>País con más votos</span>
+            <strong>${bastion}</strong>
+          </div>
+        </div>
+      </div>`;
+    })
+    .join("");
+  cont.innerHTML = `
+    <div class="reparto" title="Reparto de países">${segmentos}</div>
+    <div class="resumen-cands">${tarjetas}</div>`;
 }
 
 // Tarjeta compacta de una región para el grid.
@@ -223,23 +256,13 @@ function tarjetaRegion(region) {
   }
   const lider = p[0];
   const cgan = colorPartido(lider.codigo);
-  const actas = region.totales ? `${Number(region.totales.actas_contabilizadas).toFixed(0)}%` : "";
-
-  // Donut con la proporción de votos válidos entre los participantes.
-  const totalPct = p.reduce((s, c) => s + c.pct_validos, 0) || 1;
-  let acc = 0;
-  const segmentos = p
-    .map((c) => {
-      const ini = (acc / totalPct) * 360;
-      acc += c.pct_validos;
-      const fin = (acc / totalPct) * 360;
-      return `${colorPartido(c.codigo).color} ${ini}deg ${fin}deg`;
-    })
-    .join(", ");
+  const actasPct = region.totales ? Number(region.totales.actas_contabilizadas) : 0;
+  const actas = `${actasPct.toFixed(0)}%`;
+  const sinDatos = actasPct === 0;
 
   const leyenda = p
     .map((c, i) => {
-      const color = colorPartido(c.codigo).color;
+      const color = sinDatos ? "var(--text-dim)" : colorPartido(c.codigo).color;
       const claseLider = i === 0 ? "region-cand--lider" : "";
       return `
       <span class="region-cand ${claseLider}" style="color:${color}">
@@ -248,19 +271,19 @@ function tarjetaRegion(region) {
     })
     .join("");
 
+  const estiloInline = sinDatos
+    ? ""
+    : `style="--cp:${cgan.color}; background:
+        linear-gradient(160deg, rgba(${cgan.rgb}, 0.16), rgba(${cgan.rgb}, 0.04));
+        border-color: rgba(${cgan.rgb}, 0.55)"`;
+
   return `
-    <div class="region" data-ubigeo="${region.ubigeo}"
-         style="--cp:${cgan.color}; background:
-           linear-gradient(160deg, rgba(${cgan.rgb}, 0.16), rgba(${cgan.rgb}, 0.04));
-           border-color: rgba(${cgan.rgb}, 0.55)">
+    <div class="region${sinDatos ? " region--sin-datos" : ""}" data-ubigeo="${region.ubigeo}" ${estiloInline}>
       <div class="region__head">
         <span class="region__nombre">${region.nombre}</span>
         <span class="region__actas" title="Porcentaje de actas contabilizadas">${actas}</span>
       </div>
       <div class="region__cuerpo">
-        <div class="donut" style="background: conic-gradient(${segmentos})">
-          <div class="donut__centro"></div>
-        </div>
         <div class="region__leyenda">${leyenda}</div>
       </div>
     </div>`;
@@ -291,6 +314,7 @@ function tooltipRegion(region) {
         <div><span>Votos válidos</span><strong>${fmtMiles.format(t.votos_validos)}</strong></div>
         <div><span>Votos emitidos</span><strong>${fmtMiles.format(t.votos_emitidos)}</strong></div>
         <div><span>Actas (procesadas/total)</span><strong>${fmtMiles.format(t.contabilizadas)} / ${fmtMiles.format(t.total_actas)}</strong></div>
+        <div><span>Actas pendientes</span><strong style="color:#f87171">${fmtMiles.format(t.total_actas - t.contabilizadas)}</strong></div>
       </div>`
     : '<p class="placeholder">Sin datos de actas.</p>';
 
@@ -324,11 +348,11 @@ function posicionarTooltip(ev) {
   tooltipEl.style.top = `${Math.max(8, y)}px`;
 }
 
-function conectarTooltips(grid) {
+function conectarTooltips(grid, getCache) {
   grid.addEventListener("mouseover", (ev) => {
     const tarjeta = ev.target.closest(".region");
     if (!tarjeta || !grid.contains(tarjeta)) return;
-    const region = cacheRegiones.find((r) => r.ubigeo === tarjeta.dataset.ubigeo);
+    const region = getCache().find((r) => r.ubigeo === tarjeta.dataset.ubigeo);
     if (!region) return;
     tooltipEl.innerHTML = tooltipRegion(region);
     tooltipEl.style.display = "block";
@@ -414,13 +438,12 @@ function cerrarModal() {
   document.body.classList.remove("modal-abierto");
 }
 
-function conectarModalRegiones(grid) {
+function conectarModalRegiones(grid, getCache) {
   grid.addEventListener("click", (ev) => {
     const tarjeta = ev.target.closest(".region");
     if (!tarjeta || !grid.contains(tarjeta)) return;
-    const region = cacheRegiones.find((r) => r.ubigeo === tarjeta.dataset.ubigeo);
+    const region = getCache().find((r) => r.ubigeo === tarjeta.dataset.ubigeo);
     if (!region) return;
-    // En móvil no hay hover: ocultamos cualquier tooltip residual.
     tooltipEl.style.display = "none";
     abrirModalRegion(region);
   });
@@ -476,12 +499,19 @@ let cachePaises = [];
 function renderGridPaises(paises, filtro = "") {
   const grid = document.getElementById("grid-paises");
   const texto = filtro.trim().toLowerCase();
-  const visibles = texto ? paises.filter((r) => r.nombre.toLowerCase().includes(texto)) : paises;
+  let visibles = texto ? paises.filter((r) => r.nombre.toLowerCase().includes(texto)) : [...paises];
 
   if (!visibles.length) {
     grid.innerHTML = '<p class="placeholder">Sin países que coincidan.</p>';
     return;
   }
+  // Países con actas primero; los sin datos al final
+  visibles.sort((a, b) => {
+    const aAct = a.totales ? Number(a.totales.actas_contabilizadas) : 0;
+    const bAct = b.totales ? Number(b.totales.actas_contabilizadas) : 0;
+    if ((aAct === 0) !== (bAct === 0)) return aAct === 0 ? 1 : -1;
+    return a.nombre.localeCompare(b.nombre, "es");
+  });
   grid.innerHTML = visibles.map(tarjetaRegion).join("");
 }
 
@@ -515,74 +545,105 @@ function renderTablaActas(contenedor, items, etiqueta) {
 function renderActasFaltantes(data) {
   const seccion = document.getElementById("actas-faltantes");
   if (!seccion) return;
-  const tieneRegiones = data.actas_faltantes_regiones && data.actas_faltantes_regiones.length > 0;
-  const tienePaises = data.actas_faltantes_paises && data.actas_faltantes_paises.length > 0;
-  if (!tieneRegiones && !tienePaises) {
+  const r = data.actas_faltantes_regiones || [];
+  const p = data.actas_faltantes_paises || [];
+  if (r.length === 0 && p.length === 0) {
     seccion.hidden = true;
     return;
   }
+  const totalNacional = r.reduce((s, x) => s + x.pendientes, 0);
+  const totalExterior = p.reduce((s, x) => s + x.pendientes, 0);
   seccion.hidden = false;
-  renderTablaActas(document.getElementById("tabla-actas-regiones"), data.actas_faltantes_regiones, "región");
-  renderTablaActas(document.getElementById("tabla-actas-paises"), data.actas_faltantes_paises, "país");
-}
-
-async function cargarExterior() {
-  const data = await obtenerJSON("/api/exterior");
-  renderMetrics(document.getElementById("metrics-exterior"), data.totales);
-  renderCandidatosGeneral(document.getElementById("candidatos-exterior"), data.participantes, data.tendencia);
+  document.getElementById("actas-totales").innerHTML = `
+    <div class="actas-total-item">
+      <span class="actas-total-label">Nacional</span>
+      <span class="actas-total-val">${fmtMiles.format(totalNacional)}</span>
+      <span class="actas-total-sub">actas por contar</span>
+    </div>
+    <div class="actas-total-item">
+      <span class="actas-total-label">Exterior</span>
+      <span class="actas-total-val">${fmtMiles.format(totalExterior)}</span>
+      <span class="actas-total-sub">actas por contar</span>
+    </div>`;
 }
 
 async function cargarPaises() {
   cachePaises = await obtenerJSON("/api/exterior/paises");
-  const filtro = document.getElementById("buscar-pais").value;
-  renderGridPaises(cachePaises, filtro);
+  const filtro = document.getElementById("buscar-grid");
+  renderGridPaises(cachePaises, filtro ? filtro.value : "");
 }
 
 async function cargarRegiones() {
   cacheRegiones = await obtenerJSON("/api/regiones");
-  const filtro = document.getElementById("buscar-region").value;
-  renderGridRegiones(cacheRegiones, filtro);
+  const filtro = document.getElementById("buscar-grid");
+  renderGridRegiones(cacheRegiones, filtro ? filtro.value : "");
 }
 
 async function cargarResumen() {
   const data = await obtenerJSON("/api/resumen");
   renderResumen(data);
+  renderResumenPaises(data);
   renderActasFaltantes(data);
 }
 
 async function refrescarTodo() {
   try {
-    await Promise.all([cargarGeneral(), cargarResumen(), cargarRegiones(), cargarExterior(), cargarPaises()]);
+    await Promise.all([cargarGeneral(), cargarResumen(), cargarRegiones(), cargarPaises()]);
   } catch (err) {
     document.getElementById("actualizado").textContent = "Error al cargar datos";
     console.error(err);
   }
 }
 
+let tabGrilla = "nacional";
+
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("buscar-region").addEventListener("input", (e) => renderGridRegiones(cacheRegiones, e.target.value));
-
-  document.getElementById("buscar-pais").addEventListener("input", (e) => renderGridPaises(cachePaises, e.target.value));
-
-  conectarTooltips(document.getElementById("grid-regiones"));
-  conectarModalRegiones(document.getElementById("grid-regiones"));
-
-  conectarTooltips(document.getElementById("grid-paises"));
-  conectarModalRegiones(document.getElementById("grid-paises"));
-
-  // Tabs de actas faltantes.
-  document.getElementById("tab-regiones").addEventListener("click", () => {
-    document.getElementById("tab-regiones").classList.add("actas-tab--activo");
-    document.getElementById("tab-paises").classList.remove("actas-tab--activo");
-    document.getElementById("tabla-actas-regiones").hidden = false;
-    document.getElementById("tabla-actas-paises").hidden = true;
+  const inputBuscar = document.getElementById("buscar-grid");
+  inputBuscar.addEventListener("input", (e) => {
+    if (tabGrilla === "nacional") renderGridRegiones(cacheRegiones, e.target.value);
+    else renderGridPaises(cachePaises, e.target.value);
   });
-  document.getElementById("tab-paises").addEventListener("click", () => {
-    document.getElementById("tab-paises").classList.add("actas-tab--activo");
-    document.getElementById("tab-regiones").classList.remove("actas-tab--activo");
-    document.getElementById("tabla-actas-paises").hidden = false;
-    document.getElementById("tabla-actas-regiones").hidden = true;
+
+  document.getElementById("tab-resumen-regiones").addEventListener("click", () => {
+    document.getElementById("tab-resumen-regiones").classList.add("regiones-tab--activo");
+    document.getElementById("tab-resumen-paises").classList.remove("regiones-tab--activo");
+    document.getElementById("panel-resumen-regiones").hidden = false;
+    document.getElementById("panel-resumen-paises").hidden = true;
   });
+
+  document.getElementById("tab-resumen-paises").addEventListener("click", () => {
+    document.getElementById("tab-resumen-paises").classList.add("regiones-tab--activo");
+    document.getElementById("tab-resumen-regiones").classList.remove("regiones-tab--activo");
+    document.getElementById("panel-resumen-regiones").hidden = true;
+    document.getElementById("panel-resumen-paises").hidden = false;
+  });
+
+  document.getElementById("tab-nacional").addEventListener("click", () => {
+    tabGrilla = "nacional";
+    document.getElementById("tab-nacional").classList.add("regiones-tab--activo");
+    document.getElementById("tab-exterior").classList.remove("regiones-tab--activo");
+    document.getElementById("panel-nacional").hidden = false;
+    document.getElementById("panel-exterior").hidden = true;
+    inputBuscar.placeholder = "Buscar región…";
+    inputBuscar.value = "";
+    renderGridRegiones(cacheRegiones, "");
+  });
+
+  document.getElementById("tab-exterior").addEventListener("click", () => {
+    tabGrilla = "exterior";
+    document.getElementById("tab-exterior").classList.add("regiones-tab--activo");
+    document.getElementById("tab-nacional").classList.remove("regiones-tab--activo");
+    document.getElementById("panel-nacional").hidden = true;
+    document.getElementById("panel-exterior").hidden = false;
+    inputBuscar.placeholder = "Buscar país…";
+    inputBuscar.value = "";
+    renderGridPaises(cachePaises, "");
+  });
+
+  conectarTooltips(document.getElementById("grid-regiones"), () => cacheRegiones);
+  conectarModalRegiones(document.getElementById("grid-regiones"), () => cacheRegiones);
+  conectarTooltips(document.getElementById("grid-paises"), () => cachePaises);
+  conectarModalRegiones(document.getElementById("grid-paises"), () => cachePaises);
 
   const btnInfo = document.getElementById("btn-info");
   if (btnInfo) btnInfo.addEventListener("click", abrirModalInfo);

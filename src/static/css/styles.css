@@ -30,7 +30,7 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  overflow: hidden;
 }
 
 /* Header */
@@ -147,16 +147,20 @@ body {
 /* Layout */
 .container {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
   width: 100%;
   margin: 0 auto;
   padding: 12px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
 }
 
 .grid-top {
+  /* flex: 1 para ocupar todo el alto disponible del container */
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
   grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr);
@@ -164,9 +168,6 @@ body {
     "general regiones"
     "resumen regiones";
   gap: 12px;
-  min-height: 0;
-  /* Altura fija para que el panel lateral regiones quede alineado. */
-  height: clamp(480px, 52vh, 680px);
 }
 
 .card--general {
@@ -177,6 +178,15 @@ body {
 
 .card--resumen {
   grid-area: resumen;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#panel-resumen-regiones:not([hidden]),
+#panel-resumen-paises:not([hidden]) {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
@@ -211,13 +221,14 @@ body {
     overflow-y: visible;
   }
   .grid-top {
+    flex: none;
+    height: auto;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
     grid-template-areas:
       "general"
       "resumen"
       "regiones";
-    height: auto;
   }
   .card--general,
   .card--resumen {
@@ -582,10 +593,16 @@ body {
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-rows: minmax(70px, calc(20% - 6px));
   gap: 8px;
   margin-top: 10px;
   padding-right: 6px;
+}
+
+/* En el panel exterior hay muchos países: 4 columnas y filas más altas para los nombres */
+#panel-exterior .grid-regiones {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 90px;
 }
 
 .grid-regiones::-webkit-scrollbar {
@@ -635,36 +652,8 @@ body {
   flex: 1;
   min-height: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-}
-
-/* Gráfico de dona */
-.donut {
-  --tam: clamp(42px, 6vh, 58px);
-  width: var(--tam);
-  height: var(--tam);
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.donut__centro {
-  width: 58%;
-  height: 58%;
-  border-radius: 50%;
-  background: var(--bg-card);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: clamp(0.55rem, 0.8vw, 0.72rem);
-  font-weight: 800;
-  color: var(--cp, var(--text));
 }
 
 .region__leyenda {
@@ -673,18 +662,18 @@ body {
   flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
 .region-cand {
   font-weight: 800;
-  font-size: clamp(0.66rem, 0.85vw, 0.84rem);
+  font-size: clamp(0.8rem, 1.1vw, 1rem);
   white-space: nowrap;
 }
 
 .region-cand--lider {
-  font-size: clamp(0.7rem, 0.95vw, 0.9rem);
+  font-size: clamp(0.9rem, 1.2vw, 1.1rem);
 }
 
 .region {
@@ -699,6 +688,19 @@ body {
   transform: translateY(-2px);
   border-color: var(--cp, var(--accent)) !important;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+/* Tarjeta sin actas contabilizadas: apariencia neutra y discreta */
+.region--sin-datos {
+  opacity: 0.45;
+  border-color: #2e3a4a !important;
+  background: var(--bg-soft) !important;
+}
+.region--sin-datos:hover {
+  opacity: 0.7;
+  border-color: #4a5a6a !important;
+  box-shadow: none;
+  transform: none;
 }
 
 /* Tooltip de detalle por región */
@@ -800,121 +802,94 @@ body {
   font-style: italic;
 }
 
-/* ---- Voto Exterior ---- */
-.card--exterior {
-  margin-top: 12px;
-}
-
-.card__header--sub {
-  margin-top: 14px;
-  margin-bottom: 6px;
-}
-
-.card__subtitle {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-dim);
-}
-
-/* ---- Actas faltantes ---- */
-.actas-faltantes {
-  margin-top: 18px;
-  border-top: 1px solid var(--bg-soft);
-  padding-top: 14px;
-}
-
-.actas-faltantes__titulo {
-  font-size: 0.9rem;
-  font-weight: 700;
-  margin: 0 0 10px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.actas-tabs {
+/* ---- Tabs panel Regiones / Países ---- */
+.regiones-tabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 10px;
+  flex-shrink: 0;
+  margin-bottom: 4px;
 }
 
-.actas-tab {
+.regiones-tab {
   background: var(--bg-soft);
   border: 1px solid #3f4f66;
   color: var(--text-dim);
   border-radius: 8px;
-  padding: 5px 12px;
-  font-size: 0.8rem;
+  padding: 5px 14px;
+  font-size: 0.82rem;
   cursor: pointer;
   transition:
     border-color 0.15s,
     color 0.15s;
 }
 
-.actas-tab--activo {
+.regiones-tab--activo {
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 700;
 }
 
-.actas-lista {
-  display: grid;
-  gap: 5px;
+/* Paneles dentro de card--regiones */
+#panel-nacional:not([hidden]),
+#panel-exterior:not([hidden]) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.actas-fila {
-  display: grid;
+/* ---- Actas faltantes (totales) ---- */
+.actas-faltantes {
+  margin-top: 14px;
+  border-top: 1px solid var(--bg-soft);
+  padding-top: 12px;
+  flex-shrink: 0;
+}
+
+.actas-faltantes__titulo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.actas-totales {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actas-total-item {
+  flex: 1;
+  min-width: 110px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
   gap: 2px;
 }
 
-.actas-fila__nombre {
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.actas-fila--top .actas-fila__nombre {
-  color: var(--accent);
-}
-
-.actas-fila__nums {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 0.72rem;
-}
-
-.actas-fila__pct {
-  font-weight: 700;
-  min-width: 42px;
-  color: var(--text);
-}
-
-.actas-fila__detalle {
+.actas-total-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: var(--text-dim);
-  flex: 1;
 }
 
-.actas-fila__pendientes {
-  font-weight: 700;
+.actas-total-val {
+  font-size: 1.05rem;
+  font-weight: 800;
   color: #f87171;
+  line-height: 1.1;
 }
 
-.actas-barra {
-  height: 4px;
-  background: var(--bg-soft);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.actas-barra__fill {
-  height: 100%;
-  background: #f87171;
-  border-radius: 4px;
-  transition: width 0.4s ease;
+.actas-total-sub {
+  font-size: 0.65rem;
+  color: var(--text-dim);
 }
 
 /* Footer */
@@ -1084,18 +1059,8 @@ body.modal-abierto {
   .grid-regiones {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .region__cuerpo {
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 12px;
-  }
-  .donut {
-    --tam: 60px;
-  }
   .region__leyenda {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    gap: 12px;
   }
   .region__nombre {
     font-size: 0.95rem;

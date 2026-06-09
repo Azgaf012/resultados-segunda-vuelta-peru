@@ -10,12 +10,23 @@ NIVEL_DEPARTAMENTO = "departamento"
 NIVEL_PROVINCIA = "provincia"
 NIVEL_DISTRITO = "distrito"
 
+# Niveles del ámbito exterior (idAmbitoGeografico=2).
+NIVEL_EXTRANJERO = "extranjero"          # Total del voto exterior
+NIVEL_EXTRANJERO_REGION = "region_exterior"  # Regiones agrupadas (Europa, Américas…)
+NIVEL_PAIS = "pais"                      # Países individuales
+
+# Conjunto de niveles que pertenecen al ámbito exterior.
+NIVELES_EXTERIOR = {NIVEL_EXTRANJERO, NIVEL_EXTRANJERO_REGION, NIVEL_PAIS}
+
 # Mapeo de nivel interno al valor de `tipoFiltro` que espera la API.
 TIPO_FILTRO_POR_NIVEL = {
     NIVEL_NACIONAL: "eleccion",
     NIVEL_DEPARTAMENTO: "ubigeo_nivel_01",
     NIVEL_PROVINCIA: "ubigeo_nivel_02",
     NIVEL_DISTRITO: "ubigeo_nivel_03",
+    NIVEL_EXTRANJERO: "ambito_geografico",
+    NIVEL_EXTRANJERO_REGION: "ubigeo_nivel_01",
+    NIVEL_PAIS: "ubigeo_nivel_02",
 }
 
 

@@ -55,12 +55,19 @@ class ClienteFake:
     def obtener_distritos(self, ubigeo_provincia):
         return [{"ubigeo": "010201", "nombre": "LA PECA"}]
 
+    def obtener_departamentos_exterior(self):
+        return [{"ubigeo": "910000", "nombre": "EUROPA"}]
+
+    def obtener_provincias_exterior(self, ubigeo_departamento):
+        return [{"ubigeo": "910100", "nombre": "ESPAÑA"}]
+
 
 def test_ejecutar_solo_nacional(tmp_path):
     scraper = Scraper(ClienteFake(), tmp_path, nivel_maximo="nacional")
     escritas = scraper.ejecutar()
-    # 1 fila de totales + 2 de participantes.
-    assert escritas == 3
+    # nacional + extranjero + region_exterior + pais = 4 ámbitos.
+    # Por ámbito: 1 totales + 2 participantes = 3 filas. Total: 12.
+    assert escritas == 12
     participantes = leer_ultimos_participantes(tmp_path)
     assert len(participantes) == 2
     totales = leer_ultimos_totales(tmp_path)
@@ -71,15 +78,20 @@ def test_ejecutar_solo_nacional(tmp_path):
 def test_ejecutar_hasta_distrito_recorre_todos_los_niveles(tmp_path):
     scraper = Scraper(ClienteFake(), tmp_path, nivel_maximo="distrito")
     scraper.ejecutar()
-    # Nacional + departamento + provincia + distrito = 4 ámbitos, 2 candidatos c/u.
+    # Nacional + departamento + provincia + distrito = 4 ámbitos nacionales, 2 candidatos c/u.
+    # Exterior: extranjero + region_exterior + pais = 3 ámbitos más.
     nacional = leer_ultimos_participantes(tmp_path, "nacional", "")
     departamento = leer_ultimos_participantes(tmp_path, "departamento", "010000")
     provincia = leer_ultimos_participantes(tmp_path, "provincia", "010200")
     distrito = leer_ultimos_participantes(tmp_path, "distrito", "010201")
+    extranjero = leer_ultimos_participantes(tmp_path, "extranjero", "")
+    pais = leer_ultimos_participantes(tmp_path, "pais", "910100")
     assert len(nacional) == 2
     assert len(departamento) == 2
     assert len(provincia) == 2
     assert len(distrito) == 2
+    assert len(extranjero) == 2
+    assert len(pais) == 2
 
 
 def test_segunda_pasada_misma_fecha_no_duplica(tmp_path):

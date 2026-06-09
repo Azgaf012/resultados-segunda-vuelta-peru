@@ -513,6 +513,87 @@ function actualizarAvisoActas(totales) {
   aviso.hidden = false;
 }
 
+let cachePaises = [];
+
+function renderGridPaises(paises, filtro = "") {
+  const grid = document.getElementById("grid-paises");
+  const texto = filtro.trim().toLowerCase();
+  const visibles = texto
+    ? paises.filter((r) => r.nombre.toLowerCase().includes(texto))
+    : paises;
+
+  if (!visibles.length) {
+    grid.innerHTML = '<p class="placeholder">Sin países que coincidan.</p>';
+    return;
+  }
+  grid.innerHTML = visibles.map(tarjetaRegion).join("");
+}
+
+function renderTablaActas(contenedor, items, etiqueta) {
+  if (!items || items.length === 0) {
+    contenedor.innerHTML = '<p class="placeholder">Sin datos de actas.</p>';
+    return;
+  }
+  const maxPendientes = items[0].pendientes || 1;
+  const filas = items
+    .map((item) => {
+      const barra = Math.min(100, (item.pendientes / maxPendientes) * 100);
+      const lider = item === items[0] ? "actas-fila--top" : "";
+      return `
+      <div class="actas-fila ${lider}">
+        <div class="actas-fila__nombre">${item.nombre}</div>
+        <div class="actas-fila__nums">
+          <span class="actas-fila__pct">${Number(item.pct_contabilizadas).toFixed(1)}%</span>
+          <span class="actas-fila__detalle">${fmtMiles.format(item.contabilizadas)} / ${fmtMiles.format(item.total_actas)}</span>
+          <span class="actas-fila__pendientes" title="Actas por contabilizar">−${fmtMiles.format(item.pendientes)}</span>
+        </div>
+        <div class="actas-barra">
+          <div class="actas-barra__fill" style="width:${barra.toFixed(1)}%"></div>
+        </div>
+      </div>`;
+    })
+    .join("");
+  contenedor.innerHTML = `<div class="actas-lista">${filas}</div>`;
+}
+
+function renderActasFaltantes(data) {
+  const seccion = document.getElementById("actas-faltantes");
+  if (!seccion) return;
+  const tieneRegiones = data.actas_faltantes_regiones && data.actas_faltantes_regiones.length > 0;
+  const tienePaises = data.actas_faltantes_paises && data.actas_faltantes_paises.length > 0;
+  if (!tieneRegiones && !tienePaises) {
+    seccion.hidden = true;
+    return;
+  }
+  seccion.hidden = false;
+  renderTablaActas(
+    document.getElementById("tabla-actas-regiones"),
+    data.actas_faltantes_regiones,
+    "región"
+  );
+  renderTablaActas(
+    document.getElementById("tabla-actas-paises"),
+    data.actas_faltantes_paises,
+    "país"
+  );
+}
+
+async function cargarExterior() {
+  const data = await obtenerJSON("/api/exterior");
+  renderMetrics(document.getElementById("metrics-exterior"), data.totales);
+  renderCandidatosGeneral(
+    document.getElementById("candidatos-exterior"),
+    data.participantes,
+    data.tendencia
+  );
+}
+
+async function cargarPaises() {
+  cachePaises = await obtenerJSON("/api/exterior/paises");
+  const filtro = document.getElementById("buscar-pais").value;
+  renderGridPaises(cachePaises, filtro);
+}
+
 async function cargarRegiones() {
   cacheRegiones = await obtenerJSON("/api/regiones");
   const filtro = document.getElementById("buscar-region").value;
@@ -522,11 +603,18 @@ async function cargarRegiones() {
 async function cargarResumen() {
   const data = await obtenerJSON("/api/resumen");
   renderResumen(data);
+  renderActasFaltantes(data);
 }
 
 async function refrescarTodo() {
   try {
-    await Promise.all([cargarGeneral(), cargarResumen(), cargarRegiones()]);
+    await Promise.all([
+      cargarGeneral(),
+      cargarResumen(),
+      cargarRegiones(),
+      cargarExterior(),
+      cargarPaises(),
+    ]);
   } catch (err) {
     document.getElementById("actualizado").textContent =
       "Error al cargar datos";
@@ -541,8 +629,31 @@ document.addEventListener("DOMContentLoaded", () => {
       renderGridRegiones(cacheRegiones, e.target.value)
     );
 
+  document
+    .getElementById("buscar-pais")
+    .addEventListener("input", (e) =>
+      renderGridPaises(cachePaises, e.target.value)
+    );
+
   conectarTooltips(document.getElementById("grid-regiones"));
   conectarModalRegiones(document.getElementById("grid-regiones"));
+
+  conectarTooltips(document.getElementById("grid-paises"));
+  conectarModalRegiones(document.getElementById("grid-paises"));
+
+  // Tabs de actas faltantes.
+  document.getElementById("tab-regiones").addEventListener("click", () => {
+    document.getElementById("tab-regiones").classList.add("actas-tab--activo");
+    document.getElementById("tab-paises").classList.remove("actas-tab--activo");
+    document.getElementById("tabla-actas-regiones").hidden = false;
+    document.getElementById("tabla-actas-paises").hidden = true;
+  });
+  document.getElementById("tab-paises").addEventListener("click", () => {
+    document.getElementById("tab-paises").classList.add("actas-tab--activo");
+    document.getElementById("tab-regiones").classList.remove("actas-tab--activo");
+    document.getElementById("tabla-actas-paises").hidden = false;
+    document.getElementById("tabla-actas-regiones").hidden = true;
+  });
 
   const btnInfo = document.getElementById("btn-info");
   if (btnInfo) btnInfo.addEventListener("click", abrirModalInfo);

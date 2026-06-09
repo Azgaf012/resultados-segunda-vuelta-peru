@@ -343,6 +343,52 @@ def api_region(ubigeo: str):
     return jsonify(_resultado("departamento", ubigeo, ubigeo))
 
 
+@app.route("/api/exterior")
+@cache_respuesta()
+def api_exterior():
+    """Resultado total del voto exterior con tendencia."""
+    data = _resultado("extranjero", "", "EXTRANJERO")
+    data["tendencia"] = _tendencia("extranjero", "", 3)
+    return jsonify(data)
+
+
+@app.route("/api/exterior/regiones")
+@limiter.limit("30 per minute")
+@cache_respuesta()
+def api_exterior_regiones():
+    """Lista de regiones del exterior (Europa, Américas, etc.) para el grid."""
+    regiones = []
+    for ambito in listar_ambitos(DIRECTORIO_DATOS, "region_exterior"):
+        regiones.append(
+            _resultado("region_exterior", ambito["ubigeo"], ambito["nombre_ubigeo"])
+        )
+    regiones.sort(key=lambda r: r["nombre"])
+    return jsonify(regiones)
+
+
+@app.route("/api/exterior/region/<ubigeo>")
+@cache_respuesta()
+def api_exterior_region(ubigeo: str):
+    """Detalle de una región exterior (con sus países)."""
+    if not _UBIGEO_VALIDO.match(ubigeo):
+        abort(404)
+    return jsonify(_resultado("region_exterior", ubigeo, ubigeo))
+
+
+@app.route("/api/exterior/paises")
+@limiter.limit("30 per minute")
+@cache_respuesta()
+def api_exterior_paises():
+    """Lista de todos los países del exterior para el grid."""
+    paises = []
+    for ambito in listar_ambitos(DIRECTORIO_DATOS, "pais"):
+        paises.append(
+            _resultado("pais", ambito["ubigeo"], ambito["nombre_ubigeo"])
+        )
+    paises.sort(key=lambda r: r["nombre"])
+    return jsonify(paises)
+
+
 @app.route("/api/resumen")
 @limiter.limit("30 per minute")
 @cache_respuesta()
@@ -438,6 +484,39 @@ def api_resumen():
             round(c["votos"] / votos_totales * 100, 2) if votos_totales else 0
         )
 
+    # Actas faltantes por región (departamentos nacionales).
+    actas_faltantes_regiones = []
+    for r in regiones:
+        t = r["totales"]
+        if not t:
+            continue
+        pendientes = t["total_actas"] - t["contabilizadas"]
+        actas_faltantes_regiones.append({
+            "nombre": r["nombre"],
+            "contabilizadas": t["contabilizadas"],
+            "total_actas": t["total_actas"],
+            "pendientes": pendientes,
+            "pct_contabilizadas": t["actas_contabilizadas"],
+        })
+    actas_faltantes_regiones.sort(key=lambda x: x["pendientes"], reverse=True)
+
+    # Actas faltantes por país (exterior).
+    actas_faltantes_paises = []
+    for ambito in listar_ambitos(DIRECTORIO_DATOS, "pais"):
+        t = _totales_formateados("pais", ambito["ubigeo"])
+        if not t:
+            continue
+        pendientes = t["total_actas"] - t["contabilizadas"]
+        actas_faltantes_paises.append({
+            "nombre": t["nombre"],
+            "ubigeo": ambito["ubigeo"],
+            "contabilizadas": t["contabilizadas"],
+            "total_actas": t["total_actas"],
+            "pendientes": pendientes,
+            "pct_contabilizadas": t["actas_contabilizadas"],
+        })
+    actas_faltantes_paises.sort(key=lambda x: x["pendientes"], reverse=True)
+
     return jsonify(
         {
             "total_regiones": regiones_contadas,
@@ -446,6 +525,8 @@ def api_resumen():
             "mas_holgada": mas_holgada,
             "ventaja_promedio": ventaja_promedio,
             "mayor_participacion": mayor_participacion,
+            "actas_faltantes_regiones": actas_faltantes_regiones,
+            "actas_faltantes_paises": actas_faltantes_paises,
         }
     )
 

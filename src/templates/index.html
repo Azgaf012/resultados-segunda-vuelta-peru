@@ -34,43 +34,82 @@
     </div>
 
     <main class="container">
-      <!-- Resultado general -->
-      <section class="card card--general" id="seccion-general">
-        <h2 class="card__title">Resultado General (Nacional)</h2>
+      <div class="grid-top">
+        <!-- Resultado general -->
+        <section class="card card--general" id="seccion-general">
+          <h2 class="card__title">Resultado General (Nacional)</h2>
 
-        <div class="metrics" id="metrics-general"></div>
+          <div class="metrics" id="metrics-general"></div>
 
-        <div class="candidatos candidatos--general" id="candidatos-general">
-          <p class="placeholder">Cargando resultados…</p>
+          <div class="candidatos candidatos--general" id="candidatos-general">
+            <p class="placeholder">Cargando resultados…</p>
+          </div>
+        </section>
+
+        <!-- Resumen por regiones -->
+        <section class="card card--resumen">
+          <h2 class="card__title">Resumen por Regiones</h2>
+          <div class="resumen" id="resumen">
+            <p class="placeholder">Calculando resumen…</p>
+          </div>
+          <div class="actas-faltantes" id="actas-faltantes" hidden>
+            <h3 class="actas-faltantes__titulo">Actas pendientes de contabilizar</h3>
+            <div class="actas-tabs">
+              <button class="actas-tab actas-tab--activo" id="tab-regiones" type="button">Por región</button>
+              <button class="actas-tab" id="tab-paises" type="button">Por país (exterior)</button>
+            </div>
+            <div id="tabla-actas-regiones"></div>
+            <div id="tabla-actas-paises" hidden></div>
+          </div>
+        </section>
+
+        <!-- Detalle por región -->
+        <section class="card card--regiones">
+          <div class="card__header">
+            <h2 class="card__title">Resultados por Región</h2>
+            <input
+              type="search"
+              id="buscar-region"
+              class="selector"
+              placeholder="Buscar región…"
+            />
+          </div>
+          <p class="card__nota">
+            El porcentaje junto al nombre de cada región indica el avance de actas
+            contabilizadas.
+          </p>
+
+          <div class="grid-regiones" id="grid-regiones">
+            <p class="placeholder">Cargando regiones…</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Voto exterior -->
+      <section class="card card--exterior" id="seccion-exterior">
+        <h2 class="card__title">Voto en el Exterior</h2>
+
+        <div class="metrics" id="metrics-exterior"></div>
+
+        <div class="candidatos candidatos--exterior" id="candidatos-exterior">
+          <p class="placeholder">Cargando resultados del exterior…</p>
         </div>
-      </section>
 
-      <!-- Resumen por regiones -->
-      <section class="card card--resumen">
-        <h2 class="card__title">Resumen por Regiones</h2>
-        <div class="resumen" id="resumen">
-          <p class="placeholder">Calculando resumen…</p>
-        </div>
-      </section>
-
-      <!-- Detalle por región -->
-      <section class="card card--regiones">
-        <div class="card__header">
-          <h2 class="card__title">Resultados por Región</h2>
+        <div class="card__header card__header--sub">
+          <h3 class="card__subtitle">Resultados por País</h3>
           <input
             type="search"
-            id="buscar-region"
+            id="buscar-pais"
             class="selector"
-            placeholder="Buscar región…"
+            placeholder="Buscar país…"
           />
         </div>
         <p class="card__nota">
-          El porcentaje junto al nombre de cada región indica el avance de actas
+          El porcentaje junto al nombre de cada país indica el avance de actas
           contabilizadas.
         </p>
-
-        <div class="grid-regiones" id="grid-regiones">
-          <p class="placeholder">Cargando regiones…</p>
+        <div class="grid-regiones" id="grid-paises">
+          <p class="placeholder">Cargando países…</p>
         </div>
       </section>
     </main>

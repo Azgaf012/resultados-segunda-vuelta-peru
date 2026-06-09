@@ -8,7 +8,10 @@ from pathlib import Path
 from .models import (
     NIVEL_DEPARTAMENTO,
     NIVEL_DISTRITO,
+    NIVEL_EXTRANJERO,
+    NIVEL_EXTRANJERO_REGION,
     NIVEL_NACIONAL,
+    NIVEL_PAIS,
     NIVEL_PROVINCIA,
     RegistroParticipante,
     RegistroTotales,
@@ -173,44 +176,66 @@ class Scraper:
         escritas += self._capturar_ambito(
             fecha_captura, NIVEL_NACIONAL, "", "PERÚ"
         )
-        if not self._alcanza(NIVEL_DEPARTAMENTO):
-            return escritas
-
-        for depto in self.cliente.obtener_departamentos():
-            ubigeo_dep = depto["ubigeo"]
-            escritas += self._capturar_ambito(
-                fecha_captura,
-                NIVEL_DEPARTAMENTO,
-                ubigeo_dep,
-                depto["nombre"],
-                ubigeo_departamento=ubigeo_dep,
-            )
-            if not self._alcanza(NIVEL_PROVINCIA):
-                continue
-
-            for prov in self.cliente.obtener_provincias(ubigeo_dep):
-                ubigeo_prov = prov["ubigeo"]
+        if self._alcanza(NIVEL_DEPARTAMENTO):
+            for depto in self.cliente.obtener_departamentos():
+                ubigeo_dep = depto["ubigeo"]
                 escritas += self._capturar_ambito(
                     fecha_captura,
-                    NIVEL_PROVINCIA,
-                    ubigeo_prov,
-                    prov["nombre"],
+                    NIVEL_DEPARTAMENTO,
+                    ubigeo_dep,
+                    depto["nombre"],
                     ubigeo_departamento=ubigeo_dep,
-                    ubigeo_provincia=ubigeo_prov,
                 )
-                if not self._alcanza(NIVEL_DISTRITO):
+                if not self._alcanza(NIVEL_PROVINCIA):
                     continue
 
-                for dist in self.cliente.obtener_distritos(ubigeo_prov):
-                    ubigeo_dist = dist["ubigeo"]
+                for prov in self.cliente.obtener_provincias(ubigeo_dep):
+                    ubigeo_prov = prov["ubigeo"]
                     escritas += self._capturar_ambito(
                         fecha_captura,
-                        NIVEL_DISTRITO,
-                        ubigeo_dist,
-                        dist["nombre"],
+                        NIVEL_PROVINCIA,
+                        ubigeo_prov,
+                        prov["nombre"],
                         ubigeo_departamento=ubigeo_dep,
                         ubigeo_provincia=ubigeo_prov,
-                        ubigeo_distrito=ubigeo_dist,
                     )
+                    if not self._alcanza(NIVEL_DISTRITO):
+                        continue
+
+                    for dist in self.cliente.obtener_distritos(ubigeo_prov):
+                        ubigeo_dist = dist["ubigeo"]
+                        escritas += self._capturar_ambito(
+                            fecha_captura,
+                            NIVEL_DISTRITO,
+                            ubigeo_dist,
+                            dist["nombre"],
+                            ubigeo_departamento=ubigeo_dep,
+                            ubigeo_provincia=ubigeo_prov,
+                            ubigeo_distrito=ubigeo_dist,
+                        )
+
+        # Ámbito exterior (siempre se traversa hasta países).
+        escritas += self._capturar_ambito(
+            fecha_captura, NIVEL_EXTRANJERO, "", "EXTRANJERO"
+        )
+        for reg in self.cliente.obtener_departamentos_exterior():
+            ubigeo_reg = reg["ubigeo"]
+            escritas += self._capturar_ambito(
+                fecha_captura,
+                NIVEL_EXTRANJERO_REGION,
+                ubigeo_reg,
+                reg["nombre"],
+                ubigeo_departamento=ubigeo_reg,
+            )
+            for pais in self.cliente.obtener_provincias_exterior(ubigeo_reg):
+                ubigeo_pais = pais["ubigeo"]
+                escritas += self._capturar_ambito(
+                    fecha_captura,
+                    NIVEL_PAIS,
+                    ubigeo_pais,
+                    pais["nombre"],
+                    ubigeo_departamento=ubigeo_reg,
+                    ubigeo_provincia=ubigeo_pais,
+                )
 
         return escritas

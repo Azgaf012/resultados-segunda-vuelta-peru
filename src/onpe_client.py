@@ -6,7 +6,7 @@ import time
 
 import requests
 
-from .models import TIPO_FILTRO_POR_NIVEL
+from .models import NIVELES_EXTERIOR, TIPO_FILTRO_POR_NIVEL
 
 BASE_URL = "https://resultadosegundavuelta.onpe.gob.pe/presentacion-backend"
 
@@ -102,7 +102,10 @@ class OnpeClient:
             "idEleccion": self.id_eleccion,
             "tipoFiltro": TIPO_FILTRO_POR_NIVEL[nivel],
         }
-        if nivel != "nacional":
+        if nivel in NIVELES_EXTERIOR:
+            # El ámbito exterior siempre usa idAmbitoGeografico=2.
+            params["idAmbitoGeografico"] = 2
+        elif nivel != "nacional":
             params["idAmbitoGeografico"] = self.id_ambito_geografico
         if ubigeo_departamento:
             params["idUbigeoDepartamento"] = ubigeo_departamento
@@ -173,6 +176,27 @@ class OnpeClient:
                 "idEleccion": self.id_eleccion,
                 "idAmbitoGeografico": self.id_ambito_geografico,
                 "idUbigeoProvincia": ubigeo_provincia,
+            },
+        )
+
+    def obtener_departamentos_exterior(self) -> list[dict]:
+        """Lista las regiones del exterior (idAmbitoGeografico=2)."""
+        return self._get(
+            "ubigeos/departamentos",
+            {
+                "idEleccion": self.id_eleccion,
+                "idAmbitoGeografico": 2,
+            },
+        )
+
+    def obtener_provincias_exterior(self, ubigeo_departamento: str) -> list[dict]:
+        """Lista los países de una región exterior."""
+        return self._get(
+            "ubigeos/provincias",
+            {
+                "idEleccion": self.id_eleccion,
+                "idAmbitoGeografico": 2,
+                "idUbigeoDepartamento": ubigeo_departamento,
             },
         )
 
